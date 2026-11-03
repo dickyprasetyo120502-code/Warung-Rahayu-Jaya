@@ -1,0 +1,77 @@
+/* Navbar */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Logo dan nama warung */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: bold;
+  color: hsl(0, 94%, 42%);
+}
+
+/* Gambar logo */
+.logo-image {
+  width: 45px;
+  height: 45px;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+/* Menu navigasi */
+.navbar ul {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Link navigasi */
+.navbar ul li a {
+  text-decoration: none;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+/* Hover link */
+.navbar ul li a:hover {
+  color: hsl(0, 94%, 42%);
+}
+
+/* Responsive untuk HP */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 12px 20px;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .logo {
+    font-size: 20px;
+  }
+
+  .logo-image {
+    width: 40px; 
+    height: 40px;
+  }
+
+  .navbar ul {
+    gap: 20px;
+  }
+
+  .navbar ul li a {
+    font-size: 14px;
+  }
+}
