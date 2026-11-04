@@ -8,11 +8,16 @@ import AboutSection from './components/AboutSection';
 import Footer from './components/Footer';
 import ReceiptModal from './components/ReceiptModal';
 import AdminDashboard from './components/admin/AdminDashboard';
+import LoginPage from './components/auth/LoginPage';
 import { MENU_CATEGORIES } from './data/menuData';
 import { getStocks } from './utils/stockStorage';
+import { getAuthUser, logoutUser } from './utils/authStorage';
 
 export default function App() {
-  // Support URL routing: /admin vs /
+  // Sesi Pengguna Aktif (Kasir / Admin)
+  const [authUser, setAuthUser] = useState(() => getAuthUser());
+
+  // URL path detection
   const [currentView, setCurrentView] = useState(() => {
     return window.location.pathname.startsWith('/admin') ? 'admin' : 'pos';
   });
@@ -48,6 +53,15 @@ export default function App() {
     };
   }, []);
 
+  // Listener perubahan otentikasi antar-tab
+  useEffect(() => {
+    const handleAuthChange = (e) => {
+      setAuthUser(e.detail);
+    };
+    window.addEventListener('wrj_auth_changed', handleAuthChange);
+    return () => window.removeEventListener('wrj_auth_changed', handleAuthChange);
+  }, []);
+
   const navigateTo = (view) => {
     setCurrentView(view);
     const path = view === 'admin' ? '/admin' : '/';
@@ -55,6 +69,20 @@ export default function App() {
       window.history.pushState(null, '', path);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLoginSuccess = (user, destination) => {
+    setAuthUser(user);
+    const target = destination || (user.role === 'admin' ? 'admin' : 'pos');
+    navigateTo(target);
+  };
+
+  const handleLogout = () => {
+    if (window.confirm('Apakah Anda yakin ingin keluar (logout) ke Halaman Login?')) {
+      logoutUser();
+      setAuthUser(null);
+      navigateTo('pos');
+    }
   };
 
   // Flatten all items for quick lookup
@@ -127,15 +155,43 @@ export default function App() {
     };
   }, [cart, allItemsMap]);
 
-  // Jika tampilan saat ini adalah Admin Dashboard
-  if (currentView === 'admin') {
-    return <AdminDashboard onSwitchToPOS={() => navigateTo('pos')} />;
+  // ================= 1. JIKA BELUM LOGIN: TAMPILKAN HALAMAN LOGIN =================
+  if (!authUser) {
+    return (
+      <LoginPage
+        targetView={currentView}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
   }
 
-  // Tampilan POS (Customer / Kasir Ordering)
+  // ================= 2. JIKA DI ADMIN TAPI BUKAN ROLE ADMIN =================
+  if (currentView === 'admin' && authUser.role !== 'admin') {
+    return (
+      <LoginPage
+        targetView="admin"
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
+  }
+
+  // ================= 3. JIKA LOGIN SEBAGAI ADMIN: HANYA AKSES ADMIN =================
+  if (authUser.role === 'admin') {
+    return (
+      <AdminDashboard
+        authUser={authUser}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  // ================= 4. JIKA LOGIN SEBAGAI KASIR: HANYA AKSES POS =================
   return (
     <>
-      <Navbar onSwitchToAdmin={() => navigateTo('admin')} />
+      <Navbar
+        authUser={authUser}
+        onLogout={handleLogout}
+      />
       <Hero />
       <main id="menu">
         <MenuSection

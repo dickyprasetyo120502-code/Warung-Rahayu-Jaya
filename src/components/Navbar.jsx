@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Navbar({ onSwitchToAdmin }) {
+export default function Navbar({ authUser, onLogout }) {
   return (
     <nav className="navbar">
       {/* Logo dan Nama Warung */}
@@ -9,12 +9,12 @@ export default function Navbar({ onSwitchToAdmin }) {
           src="/images/favicon.jpg"
           alt="Logo Warung Rahayu Jaya"
           className="logo-image"
-          style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+          style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover' }}
         />
         <span>Warung Rahayu Jaya</span>
       </div>
 
-      {/* Navigasi & Tombol Admin */}
+      {/* Navigasi, Profil Kasir & Tombol Keluar (Logout) */}
       <div className="navbar-actions">
         <ul>
           <li>
@@ -28,14 +28,24 @@ export default function Navbar({ onSwitchToAdmin }) {
           </li>
         </ul>
 
-        <button
-          type="button"
-          className="btn-nav-admin"
-          onClick={onSwitchToAdmin}
-          title="Buka Dashboard Admin & Stok"
-        >
-          ⚙️ Dashboard Admin
-        </button>
+        {/* Profil Kasir Aktif (Tanpa nama individu) */}
+        <div className="nav-user-profile" title="Petugas Kasir Aktif">
+          <span>👤</span>
+          <span>{authUser?.name === 'Admin' ? 'Admin' : 'Kasir'}</span>
+        </div>
+
+        {/* Tombol Keluar kembali ke Halaman Login */}
+        {onLogout && (
+          <button
+            type="button"
+            className="btn-nav-logout"
+            onClick={onLogout}
+            title="Keluar / Logout ke Halaman Login"
+          >
+            <span>🚪</span>
+            <span>Keluar</span>
+          </button>
+        )}
       </div>
     </nav>
   );

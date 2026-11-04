@@ -8,7 +8,7 @@ import {
 } from '../../utils/stockStorage';
 import { MENU_CATEGORIES } from '../../data/menuData';
 
-export default function AdminDashboard({ onSwitchToPOS }) {
+export default function AdminDashboard({ authUser, onLogout }) {
   const [stocks, setStocks] = useState(getStocks());
   const [transactions, setTransactions] = useState(getTransactions());
   const [adminTab, setAdminTab] = useState('dashboard'); // 'dashboard' | 'laporan'
@@ -189,13 +189,10 @@ export default function AdminDashboard({ onSwitchToPOS }) {
             <span>Sinkronisasi POS Real-Time Aktif</span>
           </div>
 
-          <button
-            type="button"
-            className="btn-laptop-pos"
-            onClick={onSwitchToPOS}
-          >
-            🛒 Buka Kasir / POS
-          </button>
+          <div className="nav-user-profile" title="Administrator">
+            <span>👑</span>
+            <span>Admin</span>
+          </div>
 
           <button
             type="button"
@@ -205,6 +202,18 @@ export default function AdminDashboard({ onSwitchToPOS }) {
           >
             🔄 Reset Data Hari Ini
           </button>
+
+          {onLogout && (
+            <button
+              type="button"
+              className="btn-nav-logout"
+              onClick={onLogout}
+              title="Keluar / Logout ke Halaman Login"
+            >
+              <span>🚪</span>
+              <span>Keluar</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -236,6 +245,7 @@ export default function AdminDashboard({ onSwitchToPOS }) {
       {adminTab === 'laporan' ? (
         <ProfitReport
           transactions={transactions}
+          stocks={stocks}
           totalPendapatanHariIni={totalPendapatan}
         />
       ) : (
@@ -548,15 +558,8 @@ export default function AdminDashboard({ onSwitchToPOS }) {
                       <span className="empty-icon">📭</span>
                       <strong>Belum Ada Transaksi Hari Ini</strong>
                       <p>
-                        Data dimulai dari 0. Saat customer memesan dan membayar di POS, rincian transaksi akan langsung muncul di sini.
+                        Data dimulai dari 0. Saat pesanan dibayar di kasir POS, rincian transaksi akan langsung muncul di sini secara real-time.
                       </p>
-                      <button
-                        type="button"
-                        className="btn-try-pos"
-                        onClick={onSwitchToPOS}
-                      >
-                        Buka POS & Coba Transaksi
-                      </button>
                     </div>
                   ) : (
                     transactions.map((tx, idx) => (
@@ -633,15 +636,6 @@ export default function AdminDashboard({ onSwitchToPOS }) {
 
         <button
           type="button"
-          className="mobile-nav-btn"
-          onClick={onSwitchToPOS}
-        >
-          <span className="m-nav-icon">🛒</span>
-          <span className="m-nav-label">Kasir / POS</span>
-        </button>
-
-        <button
-          type="button"
           className={`mobile-nav-btn ${adminTab === 'laporan' ? 'active' : ''}`}
           onClick={() => {
             setAdminTab('laporan');
@@ -660,6 +654,18 @@ export default function AdminDashboard({ onSwitchToPOS }) {
           <span className="m-nav-icon">🔄</span>
           <span className="m-nav-label">Reset 0</span>
         </button>
+
+        {onLogout && (
+          <button
+            type="button"
+            className="mobile-nav-btn"
+            onClick={onLogout}
+            style={{ color: '#EF4444' }}
+          >
+            <span className="m-nav-icon">🚪</span>
+            <span className="m-nav-label">Keluar</span>
+          </button>
+        )}
       </nav>
     </div>
   );

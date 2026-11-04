@@ -4559,3 +4559,421 @@ footer p:last-child {
     font-weight: 700;
   }
 }
+
+/* =====================================================================
+   ================= HALAMAN LOGIN POS & ADMIN (DEEP EMERALD) =========
+   ===================================================================== */
+
+.login-page-wrapper {
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 15%, #1D4A35 0%, #143325 55%, #0B1E15 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-page-wrapper::before {
+  content: '';
+  position: absolute;
+  top: -120px;
+  right: -120px;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: rgba(217, 119, 6, 0.12);
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.login-page-wrapper::after {
+  content: '';
+  position: absolute;
+  bottom: -100px;
+  left: -100px;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  background: rgba(30, 169, 82, 0.14);
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.login-card-container {
+  width: 100%;
+  max-width: 440px;
+  background: #FFFFFF;
+  border-radius: 24px;
+  padding: 34px 28px;
+  box-shadow: 0 20px 50px rgba(11, 30, 21, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  z-index: 10;
+  animation: loginFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes loginFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.login-logo-circle {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  padding: 3px;
+  background: linear-gradient(135deg, var(--accent-gold) 0%, #15803D 100%);
+  box-shadow: 0 4px 18px rgba(25, 61, 44, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-brand-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.login-brand-title {
+  font-size: 23px;
+  font-weight: 800;
+  color: #143325;
+  letter-spacing: -0.3px;
+  margin-bottom: 4px;
+}
+
+.login-brand-subtitle {
+  font-size: 13px;
+  color: #55685D;
+  margin-bottom: 8px;
+}
+
+.login-branch-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: #E8F0EC;
+  color: #193D2C;
+}
+
+/* Tab Pemilih Akses */
+.login-role-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: #F4F6F4;
+  padding: 6px;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  border: 1px solid #E2E8E4;
+}
+
+.login-role-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 8px;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #55685D;
+}
+
+.login-role-tab.active {
+  background: #FFFFFF;
+  border-color: #193D2C;
+  color: #193D2C;
+  box-shadow: 0 4px 12px rgba(25, 61, 44, 0.1);
+}
+
+.role-tab-icon {
+  font-size: 20px;
+}
+
+.role-tab-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.role-tab-text strong {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.role-tab-text small {
+  font-size: 10.5px;
+  color: #799C88;
+}
+
+.login-role-tab.active .role-tab-text small {
+  color: #193D2C;
+}
+
+/* Alert Error */
+.login-error-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #FEE2E2;
+  border: 1px solid #FCA5A5;
+  color: #991B1B;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  animation: shakeAlert 0.3s ease;
+}
+
+@keyframes shakeAlert {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* Form */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.login-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-input-group label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #143325;
+}
+
+.login-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-input-wrapper .input-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 16px;
+  color: #8C9891;
+  pointer-events: none;
+}
+
+.login-input-wrapper input {
+  width: 100%;
+  padding: 12px 42px 12px 38px;
+  border: 1.5px solid #E2E8E4;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #143325;
+  background: #FBFDFB;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.login-input-wrapper input:focus {
+  border-color: #193D2C;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(25, 61, 44, 0.12);
+}
+
+.btn-toggle-pwd {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  color: #666;
+}
+
+.btn-login-submit {
+  margin-top: 4px;
+  background: linear-gradient(135deg, #193D2C 0%, #112A1E 100%);
+  color: #FFFFFF;
+  border: none;
+  padding: 13px;
+  border-radius: 12px;
+  font-size: 14.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(25, 61, 44, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-login-submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #112A1E 0%, #0C2016 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(25, 61, 44, 0.4);
+}
+
+.btn-login-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Divider */
+.login-divider {
+  position: relative;
+  text-align: center;
+  margin: 22px 0 16px;
+}
+
+.login-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #E2E8E4;
+}
+
+.login-divider span {
+  position: relative;
+  background: #FFFFFF;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8C9891;
+  letter-spacing: 0.5px;
+}
+
+/* Quick Login Demo Grid */
+.quick-login-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn-quick-kasir,
+.btn-quick-admin {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid #E2E8E4;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #F9FAF9;
+  text-align: left;
+}
+
+.btn-quick-kasir:hover {
+  background: #E8F0EC;
+  border-color: #193D2C;
+  transform: translateY(-1px);
+}
+
+.btn-quick-admin:hover {
+  background: #FEF3C7;
+  border-color: #D97706;
+  transform: translateY(-1px);
+}
+
+.quick-btn-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.quick-btn-info strong {
+  font-size: 12px;
+  color: #143325;
+}
+
+.quick-btn-info small {
+  font-size: 10px;
+  color: #6B7280;
+}
+
+/* Notice Footer */
+.login-footer-notice {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid #EDF2EE;
+  text-align: center;
+}
+
+.login-footer-notice p {
+  font-size: 11px;
+  font-weight: 600;
+  color: #193D2C;
+  margin-bottom: 3px;
+}
+
+.login-footer-notice small {
+  font-size: 10.5px;
+  color: #8C9891;
+}
+
+/* ================= USER BADGE & LOGOUT BUTTON (NAVBAR & ADMIN) ================= */
+
+.nav-user-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.btn-nav-logout {
+  background: #EF4444;
+  color: #FFFFFF;
+  border: none;
+  padding: 7px 14px;
+  border-radius: var(--radius-full);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+}
+
+.btn-nav-logout:hover {
+  background: #DC2626;
+  transform: translateY(-1px);
+}
+
+.report-timestamp-meta {
+  font-size: 12px;
+  color: #55685D;
+  font-weight: 600;
+  margin-top: 4px;
+}

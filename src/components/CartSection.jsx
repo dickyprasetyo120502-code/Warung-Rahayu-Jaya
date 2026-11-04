@@ -192,7 +192,7 @@ export default function CartSection({
             <label>Nama Pemesan *</label>
             <input
               type="text"
-              placeholder="Contoh: Bpk. Budi Santoso"
+              placeholder="Contoh: Budi Santoso"
               value={nama}
               onChange={(e) => {
                 setNama(e.target.value);
