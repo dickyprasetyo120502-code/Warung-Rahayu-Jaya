@@ -1,6 +1,15 @@
 import React from 'react';
+import { MenuItemData } from '../schemas/menu.schema';
 
-export default function MenuCard({ item, qty, onTambah, onKurang, stock = 99 }) {
+interface MenuCardProps {
+  item: MenuItemData;
+  qty: number;
+  onTambah: (id: string) => void;
+  onKurang: (id: string) => void;
+  stock?: number;
+}
+
+export default function MenuCard({ item, qty, onTambah, onKurang, stock = 99 }: MenuCardProps) {
   const isOutOfStock = stock <= 0;
   const isLowStock = stock > 0 && stock <= 5;
   const isMaxReached = qty >= stock;
@@ -8,7 +17,7 @@ export default function MenuCard({ item, qty, onTambah, onKurang, stock = 99 }) 
   return (
     <div className={`card ${isOutOfStock ? 'card-out-of-stock' : ''}`}>
       <div className="card-img-wrapper">
-        <img src={item.gambar} alt={item.nama} loading="lazy" />
+        <img src={item.gambar || '/images/ayam-goreng.jpg'} alt={item.nama} loading="lazy" />
         {isOutOfStock && <div className="card-badge-soldout">❌ Stok Habis</div>}
         {isLowStock && !isOutOfStock && (
           <div className="card-badge-lowstock">⚠️ Sisa {stock} porsi</div>
@@ -61,3 +70,4 @@ export default function MenuCard({ item, qty, onTambah, onKurang, stock = 99 }) 
     </div>
   );
 }
+

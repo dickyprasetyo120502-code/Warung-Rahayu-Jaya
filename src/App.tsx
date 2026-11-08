@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import MenuSection from './components/MenuSection';
@@ -11,24 +11,24 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import LoginPage from './components/auth/LoginPage';
 import { MENU_CATEGORIES } from './data/menuData';
 import { getStocks } from './utils/stockStorage';
-import { getAuthUser, logoutUser } from './utils/authStorage';
+import { useAuth } from './context/AuthContext';
+import { useCart } from './context/CartContext';
+import { OrderData } from './schemas/order.schema';
 
 export default function App() {
-  // Sesi Pengguna Aktif (Kasir / Admin)
-  const [authUser, setAuthUser] = useState(() => getAuthUser());
+  const { user, logout } = useAuth();
+  const { cart, addItem, removeItem, resetCart, cartItems, totalQty, grandTotal, orderType, setOrderType } = useCart();
 
   // URL path detection
-  const [currentView, setCurrentView] = useState(() => {
+  const [currentView, setCurrentView] = useState<'admin' | 'pos'>(() => {
     return window.location.pathname.startsWith('/admin') ? 'admin' : 'pos';
   });
 
-  const [cart, setCart] = useState({});
-  const [searchQuery, setSearchQuery] = useState('');
-  const [orderType, setOrderType] = useState('dine-in'); // 'dine-in' | 'take-away'
-  const [receiptData, setReceiptData] = useState(null);
-  const [stocks, setStocks] = useState(getStocks());
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [receiptData, setReceiptData] = useState<OrderData | null>(null);
+  const [stocks, setStocks] = useState<Record<string, number>>(getStocks());
 
-  // Listen to popstate (back/forward button)
+  // Listen to popstate (back/forward browser button)
   useEffect(() => {
     const handlePopState = () => {
       setCurrentView(window.location.pathname.startsWith('/admin') ? 'admin' : 'pos');
@@ -53,16 +53,7 @@ export default function App() {
     };
   }, []);
 
-  // Listener perubahan otentikasi antar-tab
-  useEffect(() => {
-    const handleAuthChange = (e) => {
-      setAuthUser(e.detail);
-    };
-    window.addEventListener('wrj_auth_changed', handleAuthChange);
-    return () => window.removeEventListener('wrj_auth_changed', handleAuthChange);
-  }, []);
-
-  const navigateTo = (view) => {
+  const navigateTo = (view: 'admin' | 'pos') => {
     setCurrentView(view);
     const path = view === 'admin' ? '/admin' : '/';
     if (window.location.pathname !== path) {
@@ -71,115 +62,38 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleLoginSuccess = (user, destination) => {
-    setAuthUser(user);
-    const target = destination || (user.role === 'admin' ? 'admin' : 'pos');
-    navigateTo(target);
-  };
-
   const handleLogout = () => {
     if (window.confirm('Apakah Anda yakin ingin keluar (logout) ke Halaman Login?')) {
-      logoutUser();
-      setAuthUser(null);
+      logout();
       navigateTo('pos');
     }
   };
 
-  // Flatten all items for quick lookup
-  const allItemsMap = useMemo(() => {
-    const map = new Map();
-    MENU_CATEGORIES.forEach((category) => {
-      category.items.forEach((item) => {
-        map.set(item.id, item);
-      });
-    });
-    return map;
-  }, []);
-
-  const handleTambah = (id) => {
-    const availableStock = stocks[id] !== undefined ? stocks[id] : 99;
-    const currentQty = cart[id] || 0;
-
-    if (currentQty >= availableStock) {
-      alert(`Maaf, stok item ini hanya tersisa ${availableStock} porsi.`);
-      return;
-    }
-
-    setCart((prev) => ({
-      ...prev,
-      [id]: currentQty + 1,
-    }));
-  };
-
-  const handleKurang = (id) => {
-    setCart((prev) => {
-      const current = prev[id] || 0;
-      if (current <= 1) {
-        const copy = { ...prev };
-        delete copy[id];
-        return copy;
-      }
-      return {
-        ...prev,
-        [id]: current - 1,
-      };
-    });
-  };
-
-  const handleResetCart = (askConfirm = true) => {
-    if (Object.keys(cart).length === 0) return;
-    if (!askConfirm || window.confirm('Apakah Anda yakin ingin membatalkan dan mengosongkan semua pesanan?')) {
-      setCart({});
-    }
-  };
-
-  // Compute cart items, quantities, and totals
-  const { cartItems, totalQty, grandTotal } = useMemo(() => {
-    const items = [];
-    let qtySum = 0;
-    let totalSum = 0;
-
-    Object.entries(cart).forEach(([id, qty]) => {
-      if (qty > 0 && allItemsMap.has(id)) {
-        const item = allItemsMap.get(id);
-        items.push({ ...item, qty });
-        qtySum += qty;
-        totalSum += item.harga * qty;
-      }
-    });
-
-    return {
-      cartItems: items,
-      totalQty: qtySum,
-      grandTotal: totalSum,
-    };
-  }, [cart, allItemsMap]);
-
   // ================= 1. JIKA BELUM LOGIN: TAMPILKAN HALAMAN LOGIN =================
-  if (!authUser) {
+  if (!user) {
     return (
       <LoginPage
         targetView={currentView}
-        onLoginSuccess={handleLoginSuccess}
+        onLoginSuccess={(_, target) => navigateTo(target)}
       />
     );
   }
 
   // ================= 2. JIKA DI ADMIN TAPI BUKAN ROLE ADMIN =================
-  if (currentView === 'admin' && authUser.role !== 'admin') {
+  if (currentView === 'admin' && user.role !== 'ADMIN') {
     return (
       <LoginPage
         targetView="admin"
-        onLoginSuccess={handleLoginSuccess}
+        onLoginSuccess={(_, target) => navigateTo(target)}
       />
     );
   }
 
   // ================= 3. JIKA LOGIN SEBAGAI ADMIN: HANYA AKSES ADMIN =================
-  if (authUser.role === 'admin') {
+  if (user.role === 'ADMIN') {
     return (
       <AdminDashboard
-        authUser={authUser}
+        authUser={user}
         onLogout={handleLogout}
       />
     );
@@ -189,7 +103,7 @@ export default function App() {
   return (
     <>
       <Navbar
-        authUser={authUser}
+        authUser={user}
         onLogout={handleLogout}
       />
       <Hero />
@@ -198,8 +112,8 @@ export default function App() {
           categories={MENU_CATEGORIES}
           cart={cart}
           stocks={stocks}
-          onTambah={handleTambah}
-          onKurang={handleKurang}
+          onTambah={(id) => addItem(id, stocks[id])}
+          onKurang={removeItem}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           orderType={orderType}
@@ -211,9 +125,9 @@ export default function App() {
           grandTotal={grandTotal}
           orderType={orderType}
           setOrderType={setOrderType}
-          onTambah={handleTambah}
-          onKurang={handleKurang}
-          onResetCart={handleResetCart}
+          onTambah={(id) => addItem(id, stocks[id])}
+          onKurang={removeItem}
+          onResetCart={resetCart}
           onShowReceipt={(data) => setReceiptData(data)}
         />
 
@@ -231,3 +145,4 @@ export default function App() {
     </>
   );
 }
+

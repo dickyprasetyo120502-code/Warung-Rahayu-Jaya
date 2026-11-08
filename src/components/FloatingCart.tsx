@@ -1,9 +1,14 @@
 import React from 'react';
 
-export default function FloatingCart({ totalQty, grandTotal }) {
+interface FloatingCartProps {
+  totalQty: number;
+  grandTotal: number;
+}
+
+export default function FloatingCart({ totalQty, grandTotal }: FloatingCartProps) {
   const isActive = totalQty > 0;
 
-  const scrollToCart = (e) => {
+  const scrollToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     const cartEl = document.getElementById('cart');
     if (cartEl) {
@@ -36,3 +41,4 @@ export default function FloatingCart({ totalQty, grandTotal }) {
     </aside>
   );
 }
+

@@ -1,5 +1,18 @@
 import React from 'react';
 import MenuCard from './MenuCard';
+import { CategoryData } from '../schemas/menu.schema';
+
+interface MenuSectionProps {
+  categories: CategoryData[];
+  cart: Record<string, number>;
+  onTambah: (id: string) => void;
+  onKurang: (id: string) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  orderType: 'dine-in' | 'take-away';
+  setOrderType: (type: 'dine-in' | 'take-away') => void;
+  stocks?: Record<string, number>;
+}
 
 export default function MenuSection({
   categories,
@@ -11,7 +24,7 @@ export default function MenuSection({
   orderType,
   setOrderType,
   stocks = {},
-}) {
+}: MenuSectionProps) {
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   // Filter items in each category
@@ -21,7 +34,7 @@ export default function MenuSection({
         if (!normalizedQuery) return true;
         return (
           item.nama.toLowerCase().includes(normalizedQuery) ||
-          item.deskripsi.toLowerCase().includes(normalizedQuery)
+          (item.deskripsi && item.deskripsi.toLowerCase().includes(normalizedQuery))
         );
       });
       return { ...cat, items: matchingItems };
@@ -101,3 +114,4 @@ export default function MenuSection({
     </>
   );
 }
+

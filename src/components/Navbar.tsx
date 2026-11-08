@@ -1,6 +1,12 @@
 import React from 'react';
+import { AuthUser } from '../schemas/auth.schema';
 
-export default function Navbar({ authUser, onLogout }) {
+interface NavbarProps {
+  authUser: AuthUser | null;
+  onLogout?: () => void;
+}
+
+export default function Navbar({ authUser, onLogout }: NavbarProps) {
   return (
     <nav className="navbar">
       {/* Logo dan Nama Warung */}
@@ -31,7 +37,7 @@ export default function Navbar({ authUser, onLogout }) {
         {/* Profil Kasir Aktif (Tanpa nama individu) */}
         <div className="nav-user-profile" title="Petugas Kasir Aktif">
           <span>👤</span>
-          <span>{authUser?.name === 'Admin' ? 'Admin' : 'Kasir'}</span>
+          <span>{authUser?.role === 'ADMIN' ? 'Admin' : 'Kasir'}</span>
         </div>
 
         {/* Tombol Keluar kembali ke Halaman Login */}
@@ -50,3 +56,4 @@ export default function Navbar({ authUser, onLogout }) {
     </nav>
   );
 }
+

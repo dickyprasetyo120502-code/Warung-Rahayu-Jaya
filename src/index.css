@@ -1,3 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 120 10% 97%;
+    --foreground: 153 38% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 153 38% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 153 38% 12%;
+    --primary: 153 41% 17%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 144 20% 92%;
+    --secondary-foreground: 153 41% 17%;
+    --muted: 144 12% 90%;
+    --muted-foreground: 150 7% 35%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 144 12% 88%;
+    --input: 144 12% 88%;
+    --ring: 153 41% 17%;
+    --radius: 0.85rem;
+  }
+}
+
 :root {
   /* ================= COLOR PALETTE ================= */
   /* Modern Forest Emerald & Sage Kasir POS - Sinkron 100% dengan Dashboard Admin */

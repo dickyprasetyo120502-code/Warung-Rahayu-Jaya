@@ -1,14 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { jsPDF } from 'jspdf';
-import { MENU_CATEGORIES } from '../../data/menuData';
+import { OrderData } from '../../schemas/order.schema';
+
+interface ProfitReportProps {
+  transactions?: OrderData[];
+  stocks?: Record<string, number>;
+  totalPendapatanHariIni?: number;
+}
 
 export default function ProfitReport({
   transactions = [],
   stocks = {},
   totalPendapatanHariIni = 0,
-}) {
-  const [period, setPeriod] = useState('bulan'); // 'hari' | 'minggu' | 'bulan' | 'kustom'
-  const [showAllClosing, setShowAllClosing] = useState(false);
+}: ProfitReportProps) {
+  const [period, setPeriod] = useState<'hari' | 'minggu' | 'bulan' | 'kustom'>('bulan');
+  const [showAllClosing, setShowAllClosing] = useState<boolean>(false);
 
   // Waktu & Tanggal Real-Time Lengkap
   const now = new Date();
@@ -18,27 +24,17 @@ export default function ProfitReport({
     month: 'long',
     year: 'numeric',
   });
-  const fullTimeStr = now.toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }) + ' WIB';
+  const fullTimeStr =
+    now.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }) + ' WIB';
 
   const currentMonthYear = now.toLocaleDateString('id-ID', {
     month: 'long',
     year: 'numeric',
   });
-
-  // Flatten all menu data untuk lookup HPP & nama
-  const menuLookup = useMemo(() => {
-    const map = {};
-    MENU_CATEGORIES.forEach((cat) => {
-      cat.items.forEach((item) => {
-        map[item.id] = item;
-      });
-    });
-    return map;
-  }, []);
 
   // Filter transaksi berdasarkan periode aktif
   const filteredTransactions = useMemo(() => {
@@ -50,18 +46,18 @@ export default function ProfitReport({
     const thirtyDaysMs = 30 * oneDayMs;
 
     return transactions.filter((tx) => {
-      if (!tx.timestamp) return true; // jika tidak ada timestamp, sertakan
+      if (!tx.timestamp) return true;
       const txMs = new Date(tx.timestamp).getTime();
       const diff = nowMs - txMs;
 
       if (period === 'hari') return diff <= oneDayMs;
       if (period === 'minggu') return diff <= sevenDaysMs;
       if (period === 'bulan') return diff <= thirtyDaysMs;
-      return true; // 'kustom' / semua
+      return true;
     });
   }, [transactions, period]);
 
-  // Kalkulasi Finansial Dinamis (100% tersinkron dari transaksi POS)
+  // Kalkulasi Finansial Dinamis
   const financialStats = useMemo(() => {
     const txList = filteredTransactions;
     const txCount = txList.length;
@@ -74,13 +70,12 @@ export default function ProfitReport({
     let payCashCount = 0;
     let payEdcCount = 0;
 
-    const soldMap = {};
+    const soldMap: Record<string, { id: string; nama: string; harga: number; qty: number; total: number }> = {};
 
     txList.forEach((tx) => {
       const amount = tx.total || 0;
       gross += amount;
 
-      // Kanal pembayaran
       if (tx.paymentMethod === 'qris') {
         payQrisTotal += amount;
         payQrisCount++;
@@ -92,7 +87,6 @@ export default function ProfitReport({
         payEdcCount++;
       }
 
-      // Hitung item terjual
       if (tx.cartItems && Array.isArray(tx.cartItems)) {
         tx.cartItems.forEach((item) => {
           if (!soldMap[item.id]) {
@@ -110,11 +104,9 @@ export default function ProfitReport({
       }
     });
 
-    const discount = 0; // Diskon riil
+    const discount = 0;
     const net = gross - discount;
 
-    // Biaya Operasional F&B Proporsional Dinamis dari Penjualan Bersih
-    // HPP Bahan Baku (~42% food cost), Gaji (~16%), Listrik (~5%), Gas & Ops (~6%)
     const hppBahan = Math.round(net * 0.42);
     const gajiKaryawan = Math.round(net * 0.16);
     const listrikAir = Math.round(net * 0.05);
@@ -126,13 +118,11 @@ export default function ProfitReport({
 
     const aov = txCount > 0 ? Math.round(gross / txCount) : 0;
 
-    // Persentase kanal
     const totalPayCount = txCount || 1;
     const qrisPct = txCount > 0 ? Math.round((payQrisCount / totalPayCount) * 100) : 0;
     const cashPct = txCount > 0 ? Math.round((payCashCount / totalPayCount) * 100) : 0;
     const edcPct = txCount > 0 ? 100 - (qrisPct + cashPct) : 0;
 
-    // Menu terlaris beserta sisa stoknya
     const soldItemsList = Object.values(soldMap).sort((a, b) => b.qty - a.qty);
 
     return {
@@ -163,7 +153,6 @@ export default function ProfitReport({
     };
   }, [filteredTransactions]);
 
-  // Kelompokkan Transaksi Riil untuk Rekap Kas Closing Shift Harian
   const dailyClosings = useMemo(() => {
     if (!transactions || transactions.length === 0) {
       return [
@@ -179,7 +168,7 @@ export default function ProfitReport({
       ];
     }
 
-    const groups = {};
+    const groups: Record<string, { dateKey: string; amount: number; strukCount: number; kasir: string }> = {};
     transactions.forEach((tx) => {
       const dateKey = tx.date ? tx.date.split(',')[0].trim() : 'Hari Ini';
       if (!groups[dateKey]) {
@@ -187,28 +176,26 @@ export default function ProfitReport({
           dateKey,
           amount: 0,
           strukCount: 0,
-          kasir: tx.kasir || 'Kasir',
+          kasir: 'Kasir',
         };
       }
       groups[dateKey].amount += tx.total || 0;
       groups[dateKey].strukCount += 1;
     });
 
-    return Object.values(groups).map((grp, idx) => {
-      return {
-        dayName: 'SHIFT',
-        dateNum: idx + 1,
-        dateKey: grp.dateKey,
-        shiftTitle: `Penutupan Shift (${grp.dateKey})`,
-        kasirName: grp.kasir,
-        amount: grp.amount,
-        strukCount: grp.strukCount,
-        isKlop: true,
-      };
-    });
+    return Object.values(groups).map((grp, idx) => ({
+      dayName: 'SHIFT',
+      dateNum: idx + 1,
+      dateKey: grp.dateKey,
+      shiftTitle: `Penutupan Shift (${grp.dateKey})`,
+      kasirName: grp.kasir,
+      amount: grp.amount,
+      strukCount: grp.strukCount,
+      isKlop: true,
+    }));
   }, [transactions, now]);
 
-  // ================= CETAK PDF LAPORAN KEUANGAN RESMI LENGKAP =================
+  // Cetak PDF Laporan Keuangan Lengkap
   const handlePrintPdf = () => {
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -219,10 +206,9 @@ export default function ProfitReport({
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 14;
 
-    // Header Kop Warung
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.setTextColor(25, 61, 44); // Deep Forest Emerald
+    doc.setTextColor(25, 61, 44);
     doc.text('WARUNG RAHAYU JAYA', pageWidth / 2, y, { align: 'center' });
     y += 5.5;
 
@@ -240,7 +226,6 @@ export default function ProfitReport({
     doc.text('WhatsApp: +62 812-3456-7890 | Website: warungrahayujaya.com', pageWidth / 2, y, { align: 'center' });
     y += 4;
 
-    // Garis ganda pemisah kop
     doc.setDrawColor(25, 61, 44);
     doc.setLineWidth(0.8);
     doc.line(14, y, pageWidth - 14, y);
@@ -249,7 +234,6 @@ export default function ProfitReport({
     doc.line(14, y, pageWidth - 14, y);
     y += 6;
 
-    // Kotak Metadata Laporan Lengkap
     doc.setFillColor(244, 246, 244);
     doc.roundedRect(14, y, pageWidth - 28, 22, 2, 2, 'F');
     doc.setDrawColor(216, 228, 221);
@@ -287,7 +271,6 @@ export default function ProfitReport({
     doc.text('Admin & Kasir', 160, y + 15.5);
     y += 28;
 
-    // ================= 1. RINGKASAN PENDAPATAN & LABA =================
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10.5);
     doc.setTextColor(25, 61, 44);
@@ -295,7 +278,7 @@ export default function ProfitReport({
     y += 5;
 
     const rowH = 5.2;
-    const drawRow = (title, valStr, isBold = false, isMinus = false) => {
+    const drawRow = (title: string, valStr: string, isBold = false, isMinus = false) => {
       doc.setFont('helvetica', isBold ? 'bold' : 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(isMinus ? 185 : 40, isMinus ? 28 : 40, isMinus ? 28 : 40);
@@ -311,7 +294,6 @@ export default function ProfitReport({
     drawRow('= PENDAPATAN BERSIH (NET SALES):', `Rp ${financialStats.netSales.toLocaleString('id-ID')}`, true);
     y += 3;
 
-    // ================= 2. BEBAN OPERASIONAL (HPP & BIAYA) =================
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10.5);
     doc.setTextColor(25, 61, 44);
@@ -327,7 +309,6 @@ export default function ProfitReport({
     drawRow('= TOTAL BEBAN OPERASIONAL:', `- Rp ${financialStats.totalBeban.toLocaleString('id-ID')}`, true, true);
     y += 4;
 
-    // ================= 3. LABA BERSIH (NET PROFIT) HIGHLIGHT =================
     doc.setFillColor(232, 240, 236);
     doc.roundedRect(14, y, pageWidth - 28, 14, 2, 2, 'F');
     doc.setDrawColor(25, 61, 44);
@@ -345,7 +326,6 @@ export default function ProfitReport({
     );
     y += 20;
 
-    // ================= 4. METRIK KANAL PEMBAYARAN =================
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10.5);
     doc.setTextColor(25, 61, 44);
@@ -367,14 +347,12 @@ export default function ProfitReport({
     );
     y += 4;
 
-    // ================= 5. STATUS STOK BAHAN UTAMA (TERKINI) =================
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10.5);
     doc.setTextColor(25, 61, 44);
     doc.text('4. REKAPITULASI PENJUALAN MENU & SISA STOK DAPUR', 14, y);
     y += 5;
 
-    // Tabel mini menu terjual & stok
     const soldList = financialStats.soldItemsList.slice(0, 5);
     if (soldList.length > 0) {
       soldList.forEach((it) => {
@@ -389,7 +367,6 @@ export default function ProfitReport({
     }
     y += 8;
 
-    // ================= 6. TANDA TANGAN & PENGESAHAN =================
     if (y > 240) {
       doc.addPage();
       y = 20;
@@ -414,13 +391,11 @@ export default function ProfitReport({
     doc.text('Petugas Kasir', 32, y);
     doc.text('Admin Warung', pageWidth - 65, y);
 
-    // Save PDF
     const filenameDate = now.toISOString().slice(0, 10);
     doc.save(`Laporan-Laba-Bersih-Warung-Rahayu-Jaya-${filenameDate}.pdf`);
   };
 
   const handleExportExcel = () => {
-    // Generate CSV string
     const rows = [
       ['WARUNG RAHAYU JAYA - LAPORAN LABA BERSIH'],
       [`Tanggal Cetak: ${fullDateStr} ${fullTimeStr}`],
@@ -553,9 +528,7 @@ export default function ProfitReport({
 
       {/* ================= 2-KOLOM LAPTOP / 1-KOLOM HP ================= */}
       <div className="report-grid-layout">
-        {/* Kolom Kiri: Rincian Akuntansi & Analisis Pengeluaran */}
         <div className="report-col">
-          {/* Rincian Perhitungan Laba */}
           <div className="report-card-section">
             <div className="section-head-between">
               <h3>Rincian Perhitungan Laba</h3>
@@ -563,7 +536,6 @@ export default function ProfitReport({
             </div>
 
             <div className="accounting-ledger">
-              {/* Penjualan Kotor */}
               <div className="ledger-row">
                 <div className="ledger-icon-box">📠</div>
                 <div className="ledger-info">
@@ -575,7 +547,6 @@ export default function ProfitReport({
                 </div>
               </div>
 
-              {/* Potongan Diskon */}
               <div className="ledger-row">
                 <div className="ledger-icon-box red">🏷️</div>
                 <div className="ledger-info">
@@ -594,7 +565,6 @@ export default function ProfitReport({
                 <span>= HASIL PENJUALAN BERSIH =</span>
               </div>
 
-              {/* Pendapatan Bersih */}
               <div className="ledger-row highlight-row">
                 <div className="highlight-bar"></div>
                 <div className="ledger-info">
@@ -606,7 +576,6 @@ export default function ProfitReport({
                 </div>
               </div>
 
-              {/* Total Biaya & Beban */}
               <div className="ledger-row">
                 <div className="ledger-icon-box orange">📦</div>
                 <div className="ledger-info">
@@ -621,12 +590,11 @@ export default function ProfitReport({
                 </div>
               </div>
 
-              {/* Laba Bersih Ditahan */}
               <div className="ledger-row final-row">
                 <div className="ledger-icon-box green">💰</div>
                 <div className="ledger-info">
                   <strong>Laba Bersih Ditahan</strong>
-                  <small>Siap Alokasi Pemilik / Kas Warung</small>
+                  <small>Siap Alokasi Kas Warung</small>
                 </div>
                 <div className="ledger-amount final-bold">
                   Rp {financialStats.netProfit.toLocaleString('id-ID')}
@@ -635,7 +603,6 @@ export default function ProfitReport({
             </div>
           </div>
 
-          {/* Banner Efisiensi Dapur & Gudang */}
           <div className="kitchen-efficiency-banner">
             <div className="kitchen-overlay-content">
               <span className="kitchen-tag">EFISIENSI DAPUR & GUDANG</span>
@@ -644,7 +611,6 @@ export default function ProfitReport({
             </div>
           </div>
 
-          {/* Analisis Pengeluaran (Beban Usaha) */}
           <div className="report-card-section">
             <div className="section-head-between">
               <div>
@@ -654,7 +620,6 @@ export default function ProfitReport({
               <span className="link-detail">Tersinkron POS</span>
             </div>
 
-            {/* Progress Bar Beban Usaha */}
             <div className="expense-ratio-bar">
               <div className="exp-segment hpp" style={{ width: '61%' }} title="HPP 61%"></div>
               <div className="exp-segment gaji" style={{ width: '23%' }} title="Gaji 23%"></div>
@@ -667,7 +632,6 @@ export default function ProfitReport({
               <span>100% (Rp {financialStats.totalBeban.toLocaleString('id-ID')})</span>
             </div>
 
-            {/* List Rincian Beban */}
             <div className="expense-items-list">
               <div className="expense-item-row">
                 <div className="exp-icon-box">🥩</div>
@@ -720,9 +684,7 @@ export default function ProfitReport({
           </div>
         </div>
 
-        {/* Kolom Kanan: Metrik Kasir, Rekap Shift & Kesehatan Kas */}
         <div className="report-col">
-          {/* Metrik Kasir & Pembayaran */}
           <div className="report-card-section">
             <div className="section-head-between">
               <h3>Metrik Kasir & Pembayaran</h3>
@@ -788,7 +750,6 @@ export default function ProfitReport({
             </div>
           </div>
 
-          {/* Rekap Kas Harian (Closing Shift) */}
           <div className="report-card-section">
             <div className="section-head-between">
               <h3>Rekap Kas Harian (Closing Shift)</h3>
@@ -826,7 +787,6 @@ export default function ProfitReport({
             </button>
           </div>
 
-          {/* Kondisi Kas Warung */}
           <div className="cash-health-card">
             <div className="cash-health-icon">👍</div>
             <div className="cash-health-content">
@@ -841,3 +801,4 @@ export default function ProfitReport({
     </div>
   );
 }
+

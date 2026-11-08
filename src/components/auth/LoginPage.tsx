@@ -1,19 +1,29 @@
 import React, { useState } from 'react';
-import { loginUser, quickLogin } from '../../utils/authStorage';
+import { useAuth } from '../../context/AuthContext';
+import { loginSchema } from '../../schemas/auth.schema';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 
-export default function LoginPage({ onLoginSuccess, targetView = 'pos' }) {
-  const [selectedRole, setSelectedRole] = useState(targetView === 'admin' ? 'admin' : 'kasir');
-  const [username, setUsername] = useState(targetView === 'admin' ? 'admin' : 'kasir');
-  const [password, setPassword] = useState(targetView === 'admin' ? 'admin123' : 'kasir123');
-  const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+interface LoginPageProps {
+  onLoginSuccess: (user: any, targetView: 'admin' | 'pos') => void;
+  targetView?: 'admin' | 'pos';
+}
+
+export default function LoginPage({ onLoginSuccess, targetView = 'pos' }: LoginPageProps) {
+  const { login, quickLogin, isLoading, error: authError } = useAuth();
+  const [selectedRole, setSelectedRole] = useState<'KASIR' | 'ADMIN'>(
+    targetView === 'admin' ? 'ADMIN' : 'KASIR'
+  );
+  const [username, setUsername] = useState<string>(targetView === 'admin' ? 'admin' : 'kasir');
+  const [password, setPassword] = useState<string>(targetView === 'admin' ? 'admin123' : 'kasir123');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [validationError, setValidationError] = useState<string>('');
 
   // Switch role tab
-  const handleSelectRole = (role) => {
+  const handleSelectRole = (role: 'KASIR' | 'ADMIN') => {
     setSelectedRole(role);
-    setErrorMessage('');
-    if (role === 'admin') {
+    setValidationError('');
+    if (role === 'ADMIN') {
       setUsername('admin');
       setPassword('admin123');
     } else {
@@ -22,32 +32,39 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }) {
     }
   };
 
-  // Submit login form
-  const handleSubmit = (e) => {
+  // Submit login form with Zod validation
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage('');
-    setIsLoading(true);
+    setValidationError('');
 
-    setTimeout(() => {
-      const res = loginUser(selectedRole, username, password);
-      setIsLoading(false);
-      if (res.success) {
-        onLoginSuccess(res.user, selectedRole === 'admin' ? 'admin' : 'pos');
-      } else {
-        setErrorMessage(res.message);
-      }
-    }, 350);
+    // ZOD VALIDATION FRONTEND
+    const result = loginSchema.safeParse({
+      username: username.trim(),
+      password: password.trim(),
+      role: selectedRole,
+    });
+
+    if (!result.success) {
+      const firstIssue = result.error.issues[0]?.message || 'Input login tidak valid';
+      setValidationError(firstIssue);
+      return;
+    }
+
+    const success = await login(result.data);
+    if (success) {
+      onLoginSuccess(
+        { username, role: selectedRole },
+        selectedRole === 'ADMIN' ? 'admin' : 'pos'
+      );
+    }
   };
 
-  // One-click quick login
-  const handleQuickLogin = (role) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      const user = quickLogin(role);
-      setIsLoading(false);
-      onLoginSuccess(user, role === 'admin' ? 'admin' : 'pos');
-    }, 250);
+  const handleQuick = async (role: 'KASIR' | 'ADMIN') => {
+    await quickLogin(role);
+    onLoginSuccess({ username: role.toLowerCase(), role }, role === 'ADMIN' ? 'admin' : 'pos');
   };
+
+  const displayError = validationError || authError;
 
   return (
     <div className="login-page-wrapper">
@@ -72,8 +89,8 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }) {
         <div className="login-role-selector">
           <button
             type="button"
-            className={`login-role-tab ${selectedRole === 'kasir' ? 'active' : ''}`}
-            onClick={() => handleSelectRole('kasir')}
+            className={`login-role-tab ${selectedRole === 'KASIR' ? 'active' : ''}`}
+            onClick={() => handleSelectRole('KASIR')}
           >
             <span className="role-tab-icon">🛒</span>
             <div className="role-tab-text">
@@ -84,8 +101,8 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }) {
 
           <button
             type="button"
-            className={`login-role-tab ${selectedRole === 'admin' ? 'active' : ''}`}
-            onClick={() => handleSelectRole('admin')}
+            className={`login-role-tab ${selectedRole === 'ADMIN' ? 'active' : ''}`}
+            onClick={() => handleSelectRole('ADMIN')}
           >
             <span className="role-tab-icon">⚙️</span>
             <div className="role-tab-text">
@@ -95,11 +112,11 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }) {
           </button>
         </div>
 
-        {/* Notifikasi Error jika login salah */}
-        {errorMessage && (
+        {/* Notifikasi Error jika login salah atau gagal validasi Zod */}
+        {displayError && (
           <div className="login-error-alert">
             <span>⚠️</span>
-            <p>{errorMessage}</p>
+            <p>{displayError}</p>
           </div>
         )}
 
@@ -107,16 +124,16 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }) {
         <form onSubmit={handleSubmit} className="login-form">
           <div className="login-input-group">
             <label htmlFor="login-username">
-              {selectedRole === 'admin' ? 'Username Admin' : 'ID / Username Kasir'}
+              {selectedRole === 'ADMIN' ? 'Username Admin' : 'ID / Username Kasir'}
             </label>
             <div className="login-input-wrapper">
               <span className="input-icon">👤</span>
-              <input
+              <Input
                 id="login-username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder={selectedRole === 'admin' ? 'Contoh: admin' : 'Contoh: kasir'}
+                placeholder={selectedRole === 'ADMIN' ? 'Contoh: admin' : 'Contoh: kasir'}
                 required
                 autoComplete="username"
               />
@@ -125,11 +142,11 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }) {
 
           <div className="login-input-group">
             <label htmlFor="login-password">
-              {selectedRole === 'admin' ? 'Password / PIN Admin' : 'PIN / Password Kasir'}
+              {selectedRole === 'ADMIN' ? 'Password / PIN Admin' : 'PIN / Password Kasir'}
             </label>
             <div className="login-input-wrapper">
               <span className="input-icon">🔒</span>
-              <input
+              <Input
                 id="login-password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -149,13 +166,13 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }) {
             </div>
           </div>
 
-          <button
+          <Button
             type="submit"
-            className="btn-login-submit"
+            className="w-full h-12 text-base font-bold bg-[#193D2C] hover:bg-[#112A1E] text-white"
             disabled={isLoading}
           >
-            {isLoading ? 'Memverifikasi...' : `Masuk ke ${selectedRole === 'admin' ? 'Dashboard Admin' : 'Kasir POS'}`}
-          </button>
+            {isLoading ? 'Memverifikasi...' : `Masuk ke ${selectedRole === 'ADMIN' ? 'Dashboard Admin' : 'Kasir POS'}`}
+          </Button>
         </form>
 
         {/* Pemisah atau Masuk Cepat (Quick Demo) */}
@@ -167,7 +184,8 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }) {
           <button
             type="button"
             className="btn-quick-kasir"
-            onClick={() => handleQuickLogin('kasir')}
+            onClick={() => handleQuick('KASIR')}
+            disabled={isLoading}
           >
             <span>🛒</span>
             <div className="quick-btn-info">
@@ -179,7 +197,8 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }) {
           <button
             type="button"
             className="btn-quick-admin"
-            onClick={() => handleQuickLogin('admin')}
+            onClick={() => handleQuick('ADMIN')}
+            disabled={isLoading}
           >
             <span>👑</span>
             <div className="quick-btn-info">
