@@ -49,7 +49,7 @@ export const login = async (req: Request, res: Response) => {
         name: user.name,
       },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: (process.env.JWT_EXPIRES_IN || '1d') as any }
     );
 
     return res.json({
