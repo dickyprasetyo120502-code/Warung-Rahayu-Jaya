@@ -96,6 +96,20 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
 
         {/* Header Struk Nota Kasir */}
         <div className="receipt-header">
+          <img
+            src="/images/favicon.jpg"
+            alt="Logo Warung Rahayu Jaya"
+            style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '50%',
+              objectFit: 'cover',
+              margin: '0 auto 10px',
+              display: 'block',
+              border: '2px solid #193D2C',
+              boxShadow: '0 2px 8px rgba(25, 61, 44, 0.2)',
+            }}
+          />
           <div className="receipt-icon-success">✓</div>
           <h2>Pembayaran Berhasil!</h2>
           <p className="receipt-subtitle">Warung Rahayu Jaya</p>

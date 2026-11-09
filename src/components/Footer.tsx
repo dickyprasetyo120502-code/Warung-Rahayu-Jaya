@@ -4,6 +4,20 @@ export default function Footer() {
   return (
     <footer id="kontak">
       <div className="footer-content">
+        <img
+          src="/images/favicon.jpg"
+          alt="Logo Warung Rahayu Jaya"
+          style={{
+            width: '60px',
+            height: '60px',
+            borderRadius: '50%',
+            objectFit: 'cover',
+            margin: '0 auto 14px',
+            display: 'block',
+            border: '2px solid rgba(255, 255, 255, 0.4)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+          }}
+        />
         <h2>Warung Rahayu Jaya</h2>
         <p>Masakan Rumahan dengan Cita Rasa Khas.</p>
         <p>

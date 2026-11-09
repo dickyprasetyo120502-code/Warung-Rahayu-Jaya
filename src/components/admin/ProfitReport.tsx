@@ -436,7 +436,20 @@ export default function ProfitReport({
       {/* ================= HEADER LAPORAN RESMI ================= */}
       <div className="report-top-header">
         <div className="report-title-area">
-          <span className="report-kicker">● LAPORAN KEUANGAN RESMI TERSINKRON</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <img
+              src="/images/favicon.jpg"
+              alt="Logo Warung Rahayu Jaya"
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '1.5px solid #193D2C',
+              }}
+            />
+            <span className="report-kicker" style={{ margin: 0 }}>● LAPORAN KEUANGAN RESMI TERSINKRON</span>
+          </div>
           <div className="report-title-row">
             <h1>Ringkasan Laba Bersih</h1>
             <span className="badge-verified">✓ Terhubung POS & Stok</span>
