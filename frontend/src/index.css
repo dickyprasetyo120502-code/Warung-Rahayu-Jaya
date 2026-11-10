@@ -5496,3 +5496,808 @@ footer p:last-child {
     display: none !important;
   }
 }
+
+/* =====================================================================
+   ================= ADMIN DASHBOARD & PENGATUR STOK LENGKAP ============
+   ===================================================================== */
+
+.laptop-main-grid {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.laptop-column-left,
+.laptop-column-right {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Kartu Pengatur Stok */
+.stock-manager-card {
+  background: #FFFFFF;
+  border-radius: 14px;
+  border: 1.5px solid #D6E4DC;
+  padding: 24px;
+  box-shadow: 0 4px 18px rgba(25, 61, 44, 0.05);
+}
+
+.stock-card-header {
+  margin-bottom: 20px;
+}
+
+.header-title-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.header-title-box .icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.header-title-box h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #193D2C;
+  margin-bottom: 4px;
+}
+
+.header-title-box p {
+  font-size: 13px;
+  color: #55685D;
+  line-height: 1.5;
+}
+
+/* Toolbar Kontrol Pencarian & Filter Stok */
+.stock-controls-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #F8FAF9;
+  border: 1px solid #E2EBE5;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.search-input-wrapper .search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: #8C9891;
+}
+
+.search-input-wrapper input {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  border-radius: 8px;
+  border: 1.5px solid #D6E4DC;
+  font-size: 13.5px;
+  outline: none;
+  background: #FFFFFF;
+  color: #1F2937;
+  transition: all 0.2s;
+}
+
+.search-input-wrapper input:focus {
+  border-color: #193D2C;
+  box-shadow: 0 0 0 3px rgba(25, 61, 44, 0.12);
+}
+
+.filter-pill-group,
+.status-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filter-pill {
+  background: #FFFFFF;
+  border: 1px solid #D6E4DC;
+  color: #4A5568;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.filter-pill:hover {
+  background: #E8F0EC;
+  color: #193D2C;
+}
+
+.filter-pill.active {
+  background: #193D2C;
+  color: #FFFFFF;
+  border-color: #193D2C;
+  font-weight: 700;
+}
+
+.status-pill {
+  background: #FFFFFF;
+  border: 1px solid #D6E4DC;
+  color: #4A5568;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.status-pill.active {
+  background: #193D2C;
+  color: #FFFFFF;
+  border-color: #193D2C;
+}
+
+.status-pill.low.active {
+  background: #D97706;
+  border-color: #D97706;
+  color: #FFFFFF;
+}
+
+.status-pill.out.active {
+  background: #DC2626;
+  border-color: #DC2626;
+  color: #FFFFFF;
+}
+
+/* Tabel Pengatur Stok */
+.stock-table-container {
+  overflow-x: auto;
+  border: 1px solid #E2EBE5;
+  border-radius: 10px;
+  background: #FFFFFF;
+}
+
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.stock-table th {
+  background: #F4F8F5;
+  color: #193D2C;
+  font-weight: 800;
+  padding: 12px 14px;
+  border-bottom: 2px solid #D6E4DC;
+  white-space: nowrap;
+}
+
+.stock-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #EBF1ED;
+  vertical-align: middle;
+}
+
+.stock-table tr:hover {
+  background: #FAFDFB;
+}
+
+.stock-table tr.row-low-stock {
+  background: #FFFBEB;
+}
+
+.stock-table tr.row-out-of-stock {
+  background: #FEF2F2;
+}
+
+.stock-item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stock-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #D6E4DC;
+  flex-shrink: 0;
+}
+
+.stock-item-info strong {
+  display: block;
+  font-size: 13.5px;
+  color: #111827;
+}
+
+.stock-item-info small {
+  font-size: 11px;
+  color: #9CA3AF;
+}
+
+.category-tag {
+  background: #E8F0EC;
+  color: #193D2C;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.price-tag {
+  font-weight: 800;
+  color: #193D2C;
+  white-space: nowrap;
+}
+
+.badge-status-safe {
+  background: #DCFCE7;
+  color: #15803D;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.badge-status-low {
+  background: #FEF3C7;
+  color: #B45309;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.badge-status-out {
+  background: #FEE2E2;
+  color: #DC2626;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* Kontrol Input Counter Stok (+ / - / Input) */
+.stock-input-counter {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.stock-input-counter button {
+  width: 30px;
+  height: 32px;
+  border: none;
+  background: #F1F5F9;
+  color: #334155;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.stock-input-counter button:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+.stock-input-counter input {
+  width: 48px;
+  height: 32px;
+  border: none;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #193D2C;
+  outline: none;
+  background: transparent;
+  -moz-appearance: textfield;
+}
+
+.stock-input-counter input::-webkit-outer-spin-button,
+.stock-input-counter input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Tombol Aksi Cepat Restock (+5, +10, Habis) */
+.quick-action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-quick-add {
+  background: #E8F0EC;
+  border: 1px solid #CBE0D5;
+  color: #193D2C;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn-quick-add:hover {
+  background: #193D2C;
+  color: #FFFFFF;
+  border-color: #193D2C;
+}
+
+.btn-quick-zero {
+  background: #FEE2E2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn-quick-zero:hover {
+  background: #DC2626;
+  color: #FFFFFF;
+}
+
+/* Kartu Side Kolom Kanan */
+.admin-side-card {
+  background: #FFFFFF;
+  border-radius: 14px;
+  border: 1.5px solid #D6E4DC;
+  padding: 20px;
+  box-shadow: 0 4px 18px rgba(25, 61, 44, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.side-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1.5px solid #F0F4F2;
+  padding-bottom: 12px;
+}
+
+.side-card-header h3 {
+  font-size: 15px;
+  font-weight: 800;
+  color: #193D2C;
+  margin: 0;
+}
+
+.badge-live-tag {
+  background: #DCFCE7;
+  color: #15803D;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.badge-count-tag {
+  background: #E8F0EC;
+  color: #193D2C;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+/* Progress Bar Kanal Pembayaran */
+.payment-distribution-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #E5E7EB;
+}
+
+.pay-segment.qris {
+  background: #193D2C;
+}
+
+.pay-segment.cash {
+  background: #D97706;
+}
+
+.pay-segment.edc {
+  background: #2563EB;
+}
+
+.payment-legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4B5563;
+}
+
+.legend-item .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.legend-item .dot.qris {
+  background: #193D2C;
+}
+
+.legend-item .dot.cash {
+  background: #D97706;
+}
+
+.legend-item .dot.edc {
+  background: #2563EB;
+}
+
+.legend-item strong {
+  margin-left: auto;
+  color: #111827;
+}
+
+/* List Menu Terlaris */
+.best-sellers-list-laptop {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.best-seller-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #F8FAF9;
+  border: 1px solid #EBF1ED;
+}
+
+.seller-rank {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #193D2C;
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.seller-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.seller-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.seller-info strong {
+  font-size: 12.5px;
+  color: #111827;
+}
+
+.seller-info small {
+  font-size: 11px;
+  color: #6B7280;
+}
+
+.seller-revenue {
+  font-size: 12px;
+  font-weight: 800;
+  color: #193D2C;
+}
+
+.empty-sellers {
+  text-align: center;
+  padding: 20px 10px;
+  color: #6B7280;
+}
+
+.empty-sellers span {
+  font-size: 28px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.empty-sellers p {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 2px;
+}
+
+.empty-sellers small {
+  font-size: 11px;
+  color: #9CA3AF;
+}
+
+/* List Transaksi Terkini */
+.tx-list-laptop {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.tx-row-laptop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #F8FAF9;
+  border: 1px solid #EBF1ED;
+  font-size: 12.5px;
+}
+
+.tx-row-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tx-id-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tx-id-badge strong {
+  color: #193D2C;
+  font-weight: 800;
+}
+
+.tx-badge-status {
+  background: #DCFCE7;
+  color: #15803D;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.tx-customer-name {
+  color: #374151;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.tx-time-meta {
+  color: #9CA3AF;
+  font-size: 11px;
+}
+
+.tx-row-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.tx-nominal {
+  font-weight: 800;
+  color: #193D2C;
+  font-size: 13px;
+}
+
+.tx-items-count {
+  font-size: 11px;
+  color: #6B7280;
+}
+
+.empty-tx-laptop {
+  text-align: center;
+  padding: 24px 16px;
+  color: #6B7280;
+}
+
+.empty-tx-laptop .empty-icon {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.empty-tx-laptop strong {
+  font-size: 13.5px;
+  color: #374151;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.empty-tx-laptop p {
+  font-size: 11.5px;
+  color: #9CA3AF;
+  line-height: 1.4;
+}
+
+/* Bottom Nav untuk Tampilan Mobile */
+.admin-mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .laptop-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .laptop-admin-topbar {
+    padding: 12px 16px;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  .topbar-right {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .laptop-admin-content {
+    padding: 0 16px;
+  }
+  .laptop-metrics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .stock-manager-card {
+    padding: 16px;
+  }
+}
+
+/* Modal Stock Manager Table Styles */
+.stock-modal-table-wrap {
+  overflow-x: auto;
+  padding: 12px 16px;
+}
+
+.stock-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.stock-modal-table th {
+  background: #F4F8F5;
+  color: #193D2C;
+  font-weight: 800;
+  padding: 10px 12px;
+  border-bottom: 2px solid #D6E4DC;
+  text-align: left;
+}
+
+.stock-modal-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #EBF1ED;
+  vertical-align: middle;
+}
+
+.stock-row-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stock-mini-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid #D6E4DC;
+}
+
+.stock-counter {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #FFFFFF;
+}
+
+.stock-counter button {
+  width: 26px;
+  height: 28px;
+  border: none;
+  background: #F1F5F9;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stock-counter button:hover {
+  background: #E2E8F0;
+}
+
+.stock-counter input {
+  width: 40px;
+  height: 28px;
+  border: none;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #193D2C;
+  outline: none;
+}
+
+.stock-quick-actions {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.btn-add-quick {
+  background: #E8F0EC;
+  border: 1px solid #CBE0D5;
+  color: #193D2C;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 4px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-add-quick:hover {
+  background: #193D2C;
+  color: #FFFFFF;
+}
+
+.btn-set-zero {
+  background: #FEE2E2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 4px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-set-zero:hover {
+  background: #DC2626;
+  color: #FFFFFF;
+}
