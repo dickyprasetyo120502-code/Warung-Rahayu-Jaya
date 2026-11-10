@@ -1,0 +1,11 @@
+# Use this workspace to collaborate
+workspace:
+  id: 6b4fda50-e3a8-4c7d-8f85-def6d81a31bb
+
+localResources:
+  collections:
+    - ../backend/postman_collection.json
+
+cloudResources:
+  collections:
+    ../postman/collections/Warung Rahayu Jaya - REST API: 0c520ee7-3179-4277-b964-99087c3f56d9

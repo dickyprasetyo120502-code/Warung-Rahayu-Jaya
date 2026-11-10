@@ -1,0 +1,33 @@
+$kind: http-request
+description: Membuat order baru dari POS. Stok ayam-goreng dan nasi-putih akan otomatis terpotong di PostgreSQL!
+url: "{{baseUrl}}/api/orders"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "orderType": "dine-in",
+      "tableNumber": "04",
+      "guestCount": "2 Tamu",
+      "nama": "Budi Santoso",
+      "telepon": "081234567890",
+      "catatan": "Sambal dipisah ya",
+      "cartItems": [
+        {
+          "id": "ayam-goreng",
+          "nama": "Ayam Goreng",
+          "harga": 15000,
+          "qty": 2
+        },
+        {
+          "id": "nasi-putih",
+          "nama": "Nasi Putih",
+          "harga": 5000,
+          "qty": 2
+        }
+      ],
+      "paymentMethod": "qris"
+    }
+order: 1000

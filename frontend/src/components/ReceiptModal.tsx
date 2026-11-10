@@ -199,6 +199,20 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
             <span>Total Akhir</span>
             <span>Rp{total.toLocaleString('id-ID')}</span>
           </div>
+
+          {paymentMethod === 'cash' && orderData.cashGiven !== undefined && (
+            <>
+              <div className="totals-row" style={{ marginTop: '4px' }}>
+                <span>Uang Tunai Diterima</span>
+                <span>Rp{orderData.cashGiven.toLocaleString('id-ID')}</span>
+              </div>
+              <div className="totals-row" style={{ color: '#15803D', fontWeight: 'bold' }}>
+                <span>Uang Kembalian (Change)</span>
+                <span>Rp{(orderData.change || 0).toLocaleString('id-ID')}</span>
+              </div>
+            </>
+          )}
+
           <div className="totals-row payment-status-row">
             <span>Metode Bayar</span>
             <span className="badge-payment-success">

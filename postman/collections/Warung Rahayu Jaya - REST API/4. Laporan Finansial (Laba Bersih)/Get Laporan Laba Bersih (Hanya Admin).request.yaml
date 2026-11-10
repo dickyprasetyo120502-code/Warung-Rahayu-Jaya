@@ -1,0 +1,7 @@
+$kind: http-request
+description: Menampilkan kalkulasi laba bersih, omset gross, HPP bahan baku, gaji, utilitas, dan margin profit.
+url: "{{baseUrl}}/api/reports/profit"
+method: GET
+headers:
+  Authorization: Bearer {{token}}
+order: 1000

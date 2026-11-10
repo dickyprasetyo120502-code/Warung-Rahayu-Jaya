@@ -37,6 +37,7 @@ export default function CartSection({
   const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string>('');
+  const [cashGiven, setCashGiven] = useState<number | ''>('');
 
   useEffect(() => {
     setOrderNumber(getNextOrderNumber());
@@ -45,6 +46,10 @@ export default function CartSection({
   const subtotal = grandTotal;
   const tax = Math.round(subtotal * 0.1);
   const totalAkhir = subtotal + tax;
+
+  const actualCashGiven = typeof cashGiven === 'number' ? cashGiven : totalAkhir;
+  const kembalian = typeof cashGiven === 'number' && cashGiven >= totalAkhir ? cashGiven - totalAkhir : 0;
+  const isCashValid = paymentMethod !== 'cash' || (typeof cashGiven === 'number' && cashGiven >= totalAkhir);
 
   const qrisPayload = `https://app.midtrans.com/snap/v2/vtweb/${orderNumber.replace(/[^a-zA-Z0-9]/g, '')}?amount=${totalAkhir}&customer=${encodeURIComponent(
     nama || 'Tamu'
@@ -73,6 +78,10 @@ export default function CartSection({
       return;
     }
 
+    if (paymentMethod === 'cash' && typeof cashGiven !== 'number') {
+      setCashGiven(totalAkhir);
+    }
+
     setIsConfirmed(true);
 
     const payArea = document.getElementById('payment-action-area');
@@ -83,6 +92,11 @@ export default function CartSection({
 
   // Step 2: Selesaikan pembayaran -> kirim ke Backend REST API dengan Axios (fallback lokal jika offline)
   const handlePaymentSuccess = async () => {
+    if (paymentMethod === 'cash' && typeof cashGiven === 'number' && cashGiven < totalAkhir) {
+      alert(`Uang tunai yang diberikan (Rp${cashGiven.toLocaleString('id-ID')}) kurang dari total tagihan (Rp${totalAkhir.toLocaleString('id-ID')})`);
+      return;
+    }
+
     setIsProcessing(true);
 
     const orderData: OrderData = {
@@ -99,6 +113,8 @@ export default function CartSection({
       total: totalAkhir,
       paymentMethod,
       paymentStatus: 'PAID',
+      cashGiven: paymentMethod === 'cash' ? actualCashGiven : undefined,
+      change: paymentMethod === 'cash' ? kembalian : undefined,
       date: new Date().toLocaleString('id-ID', {
         dateStyle: 'medium',
         timeStyle: 'short',
@@ -124,6 +140,7 @@ export default function CartSection({
     setNama('');
     setTelepon('');
     setCatatan('');
+    setCashGiven('');
     setOrderNumber(getNextOrderNumber());
 
     onShowReceipt(orderData);
@@ -414,12 +431,68 @@ export default function CartSection({
             </button>
           </div>
 
+          {/* ================= TABEL RINCIAN PEMBAYARAN SEBELUM/SAAT KONFIRMASI ================= */}
+          <div className="pos-order-summary-table-box">
+            <div className="table-box-header">
+              <span className="table-box-title">
+                📋 Tabel Rincian Pembayaran Pesanan
+              </span>
+              <span className="table-box-badge">
+                {orderType === 'dine-in' ? `Dine-In (Meja ${tableNumber || '01'})` : 'Take Away (Bungkus)'}
+              </span>
+            </div>
+
+            <div className="pos-summary-table-wrapper">
+              <table className="pos-summary-table">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Menu Pesanan</th>
+                    <th style={{ textAlign: 'center' }}>Qty</th>
+                    <th style={{ textAlign: 'right' }}>Harga Satuan</th>
+                    <th style={{ textAlign: 'right' }}>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cartItems.map((item, idx) => (
+                    <tr key={item.id}>
+                      <td style={{ color: '#888' }}>{idx + 1}</td>
+                      <td>
+                        <strong>{item.nama}</strong>
+                      </td>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{item.qty}x</td>
+                      <td style={{ textAlign: 'right' }}>Rp{item.harga.toLocaleString('id-ID')}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#193D2C' }}>
+                        Rp{(item.harga * item.qty).toLocaleString('id-ID')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="pos-table-calc-box">
+              <div className="table-calc-row">
+                <span>Subtotal ({cartItems.reduce((acc, it) => acc + it.qty, 0)} porsi)</span>
+                <span>Rp{subtotal.toLocaleString('id-ID')}</span>
+              </div>
+              <div className="table-calc-row">
+                <span>PB1 / Pajak Restoran (10%)</span>
+                <span>Rp{tax.toLocaleString('id-ID')}</span>
+              </div>
+              <div className="table-calc-row final-row">
+                <span>Total Tagihan Pembayaran</span>
+                <span style={{ color: '#193D2C' }}>Rp{totalAkhir.toLocaleString('id-ID')}</span>
+              </div>
+            </div>
+          </div>
+
           {/* ================= STEP 1: BELUM KONFIRMASI ================= */}
           {!isConfirmed ? (
             <div className="pos-pre-confirm-notice">
               <p className="notice-text">
-                ⚠️ Pastikan nama pemesan dan nomor meja (jika Dine-In) sudah terisi dengan benar.
-                Klik <strong>Konfirmasi Pesanan</strong> untuk menampilkan kode QRIS atau menyelesaikan pembayaran.
+                ⚠️ Pastikan nama pemesan dan nomor meja (jika Dine-In) sudah sesuai dengan tabel di atas.
+                Klik <strong>Konfirmasi Pesanan</strong> untuk melanjutkan proses pembayaran.
               </p>
               <button
                 type="button"
@@ -475,20 +548,66 @@ export default function CartSection({
                   <div className="cash-icon-header">💵</div>
                   <h3>Pembayaran Tunai Kasir</h3>
                   <p className="cash-amount">
-                    Nominal yang harus dibayarkan: <strong>Rp{totalAkhir.toLocaleString('id-ID')}</strong>
+                    Total Tagihan: <strong>Rp{totalAkhir.toLocaleString('id-ID')}</strong>
                   </p>
-                  <p className="cash-instruction">
-                    Terima uang tunai dari pelanggan, masukkan ke laci kasir (cash drawer), kemudian tekan tombol di bawah untuk mencetak nota struk resmi.
-                  </p>
+
+                  {/* Form Kalkulator Kembalian Kasir */}
+                  <div className="cash-payment-form">
+                    <div className="cash-form-title">
+                      <span>💰</span> Input Uang Diterima dari Pelanggan:
+                    </div>
+                    <input
+                      type="number"
+                      className="cash-input-field"
+                      placeholder={`Minimal Rp${totalAkhir.toLocaleString('id-ID')}`}
+                      value={cashGiven}
+                      onChange={(e) => {
+                        const val = e.target.value ? parseInt(e.target.value, 10) : '';
+                        setCashGiven(val);
+                      }}
+                    />
+
+                    <div className="quick-cash-btns">
+                      <button
+                        type="button"
+                        className="btn-quick-cash"
+                        onClick={() => setCashGiven(totalAkhir)}
+                      >
+                        Uang Pas (Rp{totalAkhir.toLocaleString('id-ID')})
+                      </button>
+                      {[50000, 100000, 150000, 200000].map(
+                        (amt) =>
+                          amt >= totalAkhir && (
+                            <button
+                              key={amt}
+                              type="button"
+                              className="btn-quick-cash"
+                              onClick={() => setCashGiven(amt)}
+                            >
+                              Rp{amt.toLocaleString('id-ID')}
+                            </button>
+                          )
+                      )}
+                    </div>
+
+                    <div className="cash-change-display">
+                      <span>Uang Kembalian (Change):</span>
+                      <strong>Rp{kembalian.toLocaleString('id-ID')}</strong>
+                    </div>
+                  </div>
 
                   <div className="payment-action-buttons">
                     <button
                       type="button"
                       className="btn-pay-now btn-pay-cash"
                       onClick={handlePaymentSuccess}
-                      disabled={isProcessing}
+                      disabled={isProcessing || !isCashValid}
                     >
-                      {isProcessing ? 'Menyimpan...' : `Uang Diterima & Cetak Struk (Rp${totalAkhir.toLocaleString('id-ID')})`}
+                      {isProcessing
+                        ? 'Menyimpan...'
+                        : !isCashValid
+                        ? 'Uang Diterima Kurang'
+                        : `Uang Diterima & Cetak Struk (Kembalian: Rp${kembalian.toLocaleString('id-ID')})`}
                     </button>
                   </div>
                 </div>
@@ -517,6 +636,23 @@ export default function CartSection({
                   </div>
                 </div>
               )}
+
+              <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmed(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#6B7280',
+                    fontSize: '12px',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ← Edit Data / Ubah Menu Pesanan
+                </button>
+              </div>
             </div>
           )}
 

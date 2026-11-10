@@ -1,0 +1,15 @@
+$kind: http-request
+description: Login untuk mendapatkan JWT Token Admin. Salin token dari respons untuk dipakai di endpoint yang butuh autentikasi.
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "username": "admin",
+      "password": "admin123",
+      "role": "ADMIN"
+    }
+order: 1000

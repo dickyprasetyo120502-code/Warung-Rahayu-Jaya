@@ -1,0 +1,5 @@
+$kind: http-request
+description: Melihat daftar seluruh menu beserta sisa stok terbarunya dari database PostgreSQL.
+url: "{{baseUrl}}/api/menu"
+method: GET
+order: 1000

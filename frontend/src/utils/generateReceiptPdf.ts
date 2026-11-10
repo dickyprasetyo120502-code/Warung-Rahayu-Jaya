@@ -108,6 +108,14 @@ export function generateReceiptPdf(orderData: OrderData): void {
   const methodLabel = paymentMethod === 'qris' ? 'QRIS (MIDTRANS)' : paymentMethod === 'cash' ? 'TUNAI' : 'EDC / KARTU';
   doc.text(`Metode : ${methodLabel}`, 5, y);
   y += 4;
+
+  if (paymentMethod === 'cash' && orderData.cashGiven) {
+    doc.text(`Bayar Tunai: Rp${orderData.cashGiven.toLocaleString('id-ID')}`, 5, y);
+    y += 4;
+    doc.text(`Kembalian  : Rp${(orderData.change || 0).toLocaleString('id-ID')}`, 5, y);
+    y += 4;
+  }
+
   doc.setFont('courier', 'bold');
   doc.text('Status : LUNAS (PAID)', 5, y);
   y += 5;

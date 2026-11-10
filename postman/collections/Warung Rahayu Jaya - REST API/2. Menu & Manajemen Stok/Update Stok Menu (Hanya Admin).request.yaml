@@ -1,0 +1,14 @@
+$kind: http-request
+description: Mengubah stok ayam-goreng menjadi 15. Memerlukan Bearer Token Admin.
+url: "{{baseUrl}}/api/menu/ayam-goreng/stock"
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+body:
+  type: text
+  content: |-
+    {
+      "stock": 15
+    }
+order: 2000

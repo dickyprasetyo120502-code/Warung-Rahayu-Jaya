@@ -49,6 +49,8 @@ export interface OrderData {
   total: number;
   paymentMethod: 'qris' | 'cash' | 'edc';
   paymentStatus?: string;
+  cashGiven?: number;
+  change?: number;
   cartItems: OrderItemInput[];
   date?: string;
   timestamp?: string;

@@ -5006,3 +5006,493 @@ footer p:last-child {
   font-weight: 600;
   margin-top: 4px;
 }
+
+/* =====================================================================
+   ================= TABEL KONFIRMASI PEMBAYARAN KASIR POS =============
+   ===================================================================== */
+
+.pos-order-summary-table-box {
+  background: #FFFFFF;
+  border: 1.5px solid #D6E4DC;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 16px rgba(25, 61, 44, 0.06);
+}
+
+.table-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1.5px solid #E8F0EC;
+  margin-bottom: 14px;
+}
+
+.table-box-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #193D2C;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-box-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: #E8F0EC;
+  color: #193D2C;
+}
+
+.pos-summary-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 14px;
+}
+
+.pos-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pos-summary-table th {
+  background: #F4F8F5;
+  color: #193D2C;
+  font-weight: 800;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 2px solid #D6E4DC;
+}
+
+.pos-summary-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #EAEAEA;
+  color: #2D3748;
+}
+
+.pos-summary-table tr:hover {
+  background: #FAFDFB;
+}
+
+.pos-table-calc-box {
+  background: #F9FCFA;
+  border-radius: 8px;
+  padding: 12px 16px;
+  border: 1px solid #E2EBE5;
+}
+
+.table-calc-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #4A5568;
+  margin-bottom: 6px;
+}
+
+.table-calc-row.final-row {
+  border-top: 1.5px solid #CBD5E1;
+  padding-top: 8px;
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #193D2C;
+}
+
+/* ================= INPUT PEMBAYARAN TUNAI (CASH) & KEMBALIAN ================= */
+
+.cash-payment-form {
+  margin-top: 16px;
+  background: #F0FDF4;
+  border: 1.5px solid #BBF7D0;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.cash-form-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #166534;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cash-input-field {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #86EFAC;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #14532D;
+  background: #FFFFFF;
+  margin-bottom: 10px;
+}
+
+.cash-input-field:focus {
+  outline: none;
+  border-color: #22C55E;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+
+.quick-cash-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.btn-quick-cash {
+  background: #FFFFFF;
+  border: 1px solid #86EFAC;
+  color: #15803D;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-quick-cash:hover {
+  background: #DCFCE7;
+  border-color: #22C55E;
+}
+
+.cash-change-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #DCFCE7;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #166534;
+  font-weight: 700;
+}
+
+.cash-change-display strong {
+  font-size: 18px;
+  color: #14532D;
+}
+
+/* =====================================================================
+   ================= STRUK PEMBAYARAN RESMI (RECEIPT MODAL) =============
+   ===================================================================== */
+
+.receipt-modal-card {
+  background: #FFFFFF;
+  width: 100%;
+  max-width: 420px;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  border: 1px solid #E5E7EB;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.receipt-btn-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #F3F4F6;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+  color: #6B7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.receipt-btn-close:hover {
+  background: #E5E7EB;
+  color: #111827;
+}
+
+.receipt-header {
+  text-align: center;
+  padding-bottom: 12px;
+}
+
+.receipt-icon-success {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #DCFCE7;
+  color: #15803D;
+  font-size: 22px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 8px;
+}
+
+.receipt-header h2 {
+  font-size: 18px;
+  font-weight: 800;
+  color: #193D2C;
+  margin-bottom: 2px;
+}
+
+.receipt-subtitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 2px;
+}
+
+.receipt-address {
+  font-size: 11px;
+  color: #6B7280;
+  display: block;
+}
+
+.receipt-divider-dashed {
+  border-top: 1.5px dashed #D1D5DB;
+  margin: 14px 0;
+}
+
+.receipt-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  font-size: 12px;
+}
+
+.receipt-meta-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.receipt-meta-item.text-right {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.meta-label {
+  font-size: 10.5px;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.meta-value {
+  color: #1F2937;
+  font-weight: 600;
+}
+
+.order-id-bold {
+  color: #193D2C;
+  font-weight: 800;
+}
+
+.receipt-notes-box {
+  background: #FEF9C3;
+  border: 1px solid #FDE047;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  color: #854D0E;
+  margin-top: 10px;
+}
+
+.receipt-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.receipt-items-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  border-bottom: 1px solid #F3F4F6;
+  padding-bottom: 4px;
+}
+
+.receipt-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: 12.5px;
+}
+
+.receipt-item-name {
+  display: flex;
+  flex-direction: column;
+}
+
+.receipt-item-name strong {
+  color: #111827;
+  font-size: 12.5px;
+}
+
+.receipt-item-name small {
+  color: #6B7280;
+  font-size: 11px;
+}
+
+.receipt-item-price {
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.receipt-totals-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.totals-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: #4B5563;
+}
+
+.totals-row.total-highlight {
+  border-top: 1.5px solid #111827;
+  padding-top: 8px;
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 900;
+  color: #193D2C;
+}
+
+.totals-row.payment-status-row {
+  align-items: center;
+  margin-top: 4px;
+}
+
+.badge-payment-success {
+  background: #15803D;
+  color: #FFFFFF;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.receipt-footer-thankyou {
+  text-align: center;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed #E5E7EB;
+}
+
+.receipt-footer-thankyou p {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.receipt-footer-thankyou small {
+  font-size: 10.5px;
+  color: #9CA3AF;
+}
+
+.receipt-action-buttons {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-receipt-wa {
+  background: #1EA952;
+  color: #FFFFFF;
+  border: none;
+  padding: 11px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(30, 169, 82, 0.25);
+}
+
+.btn-receipt-wa:hover {
+  background: #168a42;
+}
+
+.receipt-sub-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.btn-receipt-pdf,
+.btn-receipt-print {
+  border: 1px solid #D1D5DB;
+  background: #F9FAFB;
+  color: #1F2937;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-receipt-pdf:hover,
+.btn-receipt-print:hover {
+  background: #F3F4F6;
+  border-color: #9CA3AF;
+}
+
+/* ================= PRINT MEDIA STYLING UNTUK PRINTER NOTA ================= */
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .receipt-overlay,
+  .receipt-modal-card,
+  .receipt-modal-card * {
+    visibility: visible;
+  }
+  .receipt-overlay {
+    position: static;
+    background: transparent;
+    padding: 0;
+  }
+  .receipt-modal-card {
+    box-shadow: none;
+    border: none;
+    width: 80mm;
+    max-width: 80mm;
+    margin: 0;
+    padding: 0;
+  }
+  .receipt-btn-close,
+  .receipt-action-buttons {
+    display: none !important;
+  }
+}

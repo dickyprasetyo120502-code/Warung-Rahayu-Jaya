@@ -1,0 +1,5 @@
+$kind: collection
+description: Koleksi API Postman lengkap untuk Warung Rahayu Jaya (Auth JWT, Menu & Stok, Order POS, Laporan Keuangan)
+variables:
+  baseUrl: http://localhost:5000
+  token: ""
