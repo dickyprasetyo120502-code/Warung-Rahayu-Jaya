@@ -1,4 +1,12 @@
-export const MENU_CATEGORIES = [
+import { MenuItemData } from '../schemas/menu.schema';
+
+export interface MenuCategory {
+  id: string;
+  title: string;
+  items: MenuItemData[];
+}
+
+export const MENU_CATEGORIES: MenuCategory[] = [
   {
     id: 'ayam',
     title: '🍗 Menu Ayam',
@@ -109,4 +117,3 @@ export const MENU_CATEGORIES = [
     ],
   },
 ];
-

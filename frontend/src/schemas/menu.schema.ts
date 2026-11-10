@@ -13,7 +13,7 @@ export interface MenuItemData {
   deskripsi?: string | null;
   gambar?: string | null;
   stock?: number;
-  categoryId: string;
+  categoryId?: string | null;
 }
 
 export interface CategoryData {

@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
+import { OrderData } from '../schemas/order.schema';
 
-export function generateReceiptPdf(orderData) {
+export function generateReceiptPdf(orderData: OrderData): void {
   const {
     orderNumber,
     orderType,
@@ -127,4 +128,3 @@ export function generateReceiptPdf(orderData) {
   // Save / trigger download
   doc.save(`Struk-${orderNumber}.pdf`);
 }
-

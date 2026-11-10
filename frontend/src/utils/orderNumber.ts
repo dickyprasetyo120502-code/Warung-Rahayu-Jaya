@@ -1,6 +1,6 @@
 const STORAGE_KEY = 'wrj_order_sequence';
 
-export function getNextOrderNumber() {
+export function getNextOrderNumber(): string {
   const saved = localStorage.getItem(STORAGE_KEY);
   let num = 1;
   if (saved) {
@@ -12,7 +12,7 @@ export function getNextOrderNumber() {
   return `WRJ-${String(num).padStart(3, '0')}`;
 }
 
-export function incrementOrderNumber() {
+export function incrementOrderNumber(): void {
   const saved = localStorage.getItem(STORAGE_KEY);
   let num = 1;
   if (saved) {
@@ -23,4 +23,3 @@ export function incrementOrderNumber() {
   }
   localStorage.setItem(STORAGE_KEY, String(num + 1));
 }
-

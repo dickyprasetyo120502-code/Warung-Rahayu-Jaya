@@ -1,8 +1,10 @@
+import { OrderData } from '../schemas/order.schema';
+
 const STOCK_STORAGE_KEY = 'wrj_menu_stocks';
 const TRANSACTIONS_KEY = 'wrj_sales_transactions';
 
 // Stok awal realistis (bisa diubah-ubah bebas oleh Admin kapan saja)
-export const INITIAL_STOCKS = {
+export const INITIAL_STOCKS: Record<string, number> = {
   'ayam-goreng': 6,
   'ayam-bakar': 10,
   'ayam-bumbu-bali': 5,
@@ -19,7 +21,7 @@ export const INITIAL_STOCKS = {
 };
 
 // Ambil stok saat ini
-export function getStocks() {
+export function getStocks(): Record<string, number> {
   try {
     const data = localStorage.getItem(STOCK_STORAGE_KEY);
     if (data) {
@@ -32,26 +34,26 @@ export function getStocks() {
 }
 
 // Update stok untuk 1 item (langsung emit event agar POS & Admin ter-update)
-export function updateStock(itemId, newStock) {
+export function updateStock(itemId: string, newStock: number | string): Record<string, number> {
   const current = getStocks();
-  current[itemId] = Math.max(0, parseInt(newStock, 10) || 0);
+  current[itemId] = Math.max(0, parseInt(String(newStock), 10) || 0);
   localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(current));
   window.dispatchEvent(new Event('wrj_stock_updated'));
   return current;
 }
 
 // Update seluruh stok sekaligus
-export function setAllStocks(stocksObj) {
+export function setAllStocks(stocksObj: Record<string, number>): void {
   localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(stocksObj));
   window.dispatchEvent(new Event('wrj_stock_updated'));
 }
 
 // Kurangi stok saat ada pembelian selesai di POS
-export function deductStock(cartItems) {
+export function deductStock(cartItems: Array<{ id?: string; qty?: number }>): Record<string, number> {
   const current = getStocks();
   cartItems.forEach((item) => {
-    if (current[item.id] !== undefined) {
-      current[item.id] = Math.max(0, current[item.id] - item.qty);
+    if (item.id && current[item.id] !== undefined) {
+      current[item.id] = Math.max(0, current[item.id] - (item.qty || 1));
     }
   });
   localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(current));
@@ -61,7 +63,7 @@ export function deductStock(cartItems) {
 
 // ================= TRANSAKSI PENJUALAN (MULAI DARI 0) =================
 
-export function getTransactions() {
+export function getTransactions(): any[] {
   try {
     const data = localStorage.getItem(TRANSACTIONS_KEY);
     if (data) {
@@ -73,7 +75,7 @@ export function getTransactions() {
   return []; // Dimulai dari 0 / kosong
 }
 
-export function recordTransaction(orderData) {
+export function recordTransaction(orderData: any): any[] {
   const current = getTransactions();
   const newTx = {
     orderNumber: orderData.orderNumber,
@@ -94,7 +96,7 @@ export function recordTransaction(orderData) {
 }
 
 // Fungsi reset data transaksi untuk Admin jika ingin mulai dari 0 kembali
-export function clearAllTransactions() {
+export function clearAllTransactions(): any[] {
   localStorage.removeItem(TRANSACTIONS_KEY);
   window.dispatchEvent(new Event('wrj_transactions_updated'));
   return [];
