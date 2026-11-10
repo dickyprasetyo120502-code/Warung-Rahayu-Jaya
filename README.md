@@ -82,3 +82,4 @@ npm run dev
 ## 🔑 Akun Default
 - **Admin**: Username: `admin` | Password: `admin123`
 - **Kasir**: Username: `kasir` | Password: `kasir123`
+

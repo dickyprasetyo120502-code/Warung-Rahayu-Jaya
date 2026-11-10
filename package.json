@@ -14,3 +14,4 @@
     "prisma:studio": "npm --prefix backend run prisma:studio"
   }
 }
+

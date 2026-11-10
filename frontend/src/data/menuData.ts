@@ -117,3 +117,4 @@ export const MENU_CATEGORIES: MenuCategory[] = [
     ],
   },
 ];
+

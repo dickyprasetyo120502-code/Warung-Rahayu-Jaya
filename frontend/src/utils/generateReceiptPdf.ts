@@ -128,3 +128,4 @@ export function generateReceiptPdf(orderData: OrderData): void {
   // Save / trigger download
   doc.save(`Struk-${orderNumber}.pdf`);
 }
+

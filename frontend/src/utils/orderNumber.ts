@@ -23,3 +23,4 @@ export function incrementOrderNumber(): void {
   }
   localStorage.setItem(STORAGE_KEY, String(num + 1));
 }
+
