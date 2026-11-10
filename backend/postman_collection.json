@@ -2,7 +2,7 @@
   "info": {
     "name": "Warung Rahayu Jaya - REST API",
     "_postman_id": "wrj-api-collection-2026",
-    "description": "Koleksi API Postman lengkap untuk Warung Rahayu Jaya (Auth JWT, Menu & Stok, Order POS, Laporan Keuangan)",
+    "description": "Koleksi API Postman lengkap untuk Warung Rahayu Jaya (Auth JWT, Menu & Stok, Order POS, Laporan Keuangan). Dilengkapi script otomatis untuk menyimpan token login.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -23,6 +23,23 @@
       "item": [
         {
           "name": "Login sebagai Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.token) {",
+                  "        pm.collectionVariables.set('token', jsonData.token);",
+                  "        console.log('✅ Token Admin otomatis tersimpan ke variabel {{token}}!');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -40,11 +57,28 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "auth", "login"]
             },
-            "description": "Login untuk mendapatkan JWT Token Admin. Salin token dari respons untuk dipakai di endpoint yang butuh autentikasi."
+            "description": "Login sebagai Admin. Token JWT akan otomatis tersimpan ke variabel {{token}} untuk digunakan pada request lain."
           }
         },
         {
           "name": "Login sebagai Kasir",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.token) {",
+                  "        pm.collectionVariables.set('token', jsonData.token);",
+                  "        console.log('✅ Token Kasir otomatis tersimpan ke variabel {{token}}!');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -61,7 +95,8 @@
               "raw": "{{baseUrl}}/api/auth/login",
               "host": ["{{baseUrl}}"],
               "path": ["api", "auth", "login"]
-            }
+            },
+            "description": "Login sebagai Kasir. Token JWT akan otomatis tersimpan ke variabel {{token}}."
           }
         },
         {
@@ -78,7 +113,8 @@
               "raw": "{{baseUrl}}/api/auth/me",
               "host": ["{{baseUrl}}"],
               "path": ["api", "auth", "me"]
-            }
+            },
+            "description": "Memeriksa identitas akun yang sedang login berdasarkan Bearer Token."
           }
         }
       ]
@@ -166,7 +202,8 @@
               "raw": "{{baseUrl}}/api/orders",
               "host": ["{{baseUrl}}"],
               "path": ["api", "orders"]
-            }
+            },
+            "description": "Melihat riwayat seluruh pesanan. Memerlukan Bearer Token Kasir atau Admin."
           }
         }
       ]
@@ -189,11 +226,10 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "reports", "profit"]
             },
-            "description": "Menampilkan kalkulasi laba bersih, omset gross, HPP bahan baku, gaji, utilitas, dan margin profit."
+            "description": "Menampilkan kalkulasi laba bersih, omset gross, HPP bahan baku, gaji, utilitas, dan margin profit. Memerlukan Bearer Token Admin."
           }
         }
       ]
     }
   ]
 }
-
