@@ -1,0 +1,198 @@
+{
+  "info": {
+    "name": "Warung Rahayu Jaya - REST API",
+    "_postman_id": "wrj-api-collection-2026",
+    "description": "Koleksi API Postman lengkap untuk Warung Rahayu Jaya (Auth JWT, Menu & Stok, Order POS, Laporan Keuangan)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication (Login & JWT)",
+      "item": [
+        {
+          "name": "Login sebagai Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login untuk mendapatkan JWT Token Admin. Salin token dari respons untuk dipakai di endpoint yang butuh autentikasi."
+          }
+        },
+        {
+          "name": "Login sebagai Kasir",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"kasir\",\n  \"password\": \"kasir123\",\n  \"role\": \"KASIR\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Info Akun Aktif (/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Menu & Manajemen Stok",
+      "item": [
+        {
+          "name": "Get Semua Menu & Stok Terkini",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "menu"]
+            },
+            "description": "Melihat daftar seluruh menu beserta sisa stok terbarunya dari database PostgreSQL."
+          }
+        },
+        {
+          "name": "Update Stok Menu (Hanya Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stock\": 15\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/menu/ayam-goreng/stock",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "menu", "ayam-goreng", "stock"]
+            },
+            "description": "Mengubah stok ayam-goreng menjadi 15. Memerlukan Bearer Token Admin."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Transaksi Order (POS Kasir)",
+      "item": [
+        {
+          "name": "Buat Order Baru (POS Kasir)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderType\": \"dine-in\",\n  \"tableNumber\": \"04\",\n  \"guestCount\": \"2 Tamu\",\n  \"nama\": \"Budi Santoso\",\n  \"telepon\": \"081234567890\",\n  \"catatan\": \"Sambal dipisah ya\",\n  \"cartItems\": [\n    {\n      \"id\": \"ayam-goreng\",\n      \"nama\": \"Ayam Goreng\",\n      \"harga\": 15000,\n      \"qty\": 2\n    },\n    {\n      \"id\": \"nasi-putih\",\n      \"nama\": \"Nasi Putih\",\n      \"harga\": 5000,\n      \"qty\": 2\n    }\n  ],\n  \"paymentMethod\": \"qris\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            },
+            "description": "Membuat order baru dari POS. Stok ayam-goreng dan nasi-putih akan otomatis terpotong di PostgreSQL!"
+          }
+        },
+        {
+          "name": "Get Riwayat Pesanan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Laporan Finansial (Laba Bersih)",
+      "item": [
+        {
+          "name": "Get Laporan Laba Bersih (Hanya Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/profit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "profit"]
+            },
+            "description": "Menampilkan kalkulasi laba bersih, omset gross, HPP bahan baku, gaji, utilitas, dan margin profit."
+          }
+        }
+      ]
+    }
+  ]
+}
