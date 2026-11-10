@@ -21,7 +21,37 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health Check
+// Welcome & Health Check Routes
+app.get('/', (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'Selamat datang di REST API Warung Rahayu Jaya!',
+    version: '1.0.0',
+    documentation: {
+      health: 'GET /api/health',
+      auth: {
+        login: 'POST /api/auth/login',
+        profile: 'GET /api/auth/me (Membutuhkan Bearer Token)',
+      },
+      menu: {
+        getAll: 'GET /api/menu',
+        updateStock: 'PUT /api/menu/:id/stock (Admin Only)',
+      },
+      orders: {
+        create: 'POST /api/orders',
+        getAll: 'GET /api/orders (Kasir/Admin)',
+      },
+      reports: {
+        profit: 'GET /api/reports/profit (Admin Only)',
+      },
+    },
+  });
+});
+
+app.get('/api', (_req: Request, res: Response) => {
+  res.redirect('/');
+});
+
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'OK',
