@@ -369,4 +369,37 @@ export const createSnapToken = async (req: Request, res: Response) => {
   }
 };
 
+// Handler Webhook Notifikasi Otomatis dari Midtrans (Opsional via Ngrok/Server Publik)
+export const handleMidtransNotification = async (req: Request, res: Response) => {
+  try {
+    const notification = req.body;
+    console.log('🔔 [Midtrans Webhook Received]:', notification);
+
+    const { order_id, transaction_status, fraud_status } = notification;
+
+    if (
+      transaction_status === 'capture' ||
+      transaction_status === 'settlement' ||
+      transaction_status === 'success'
+    ) {
+      if (fraud_status !== 'challenge') {
+        const orderNumber = String(order_id).split('-').slice(0, 2).join('-');
+        await prisma.order
+          .updateMany({
+            where: { orderNumber },
+            data: { paymentStatus: 'PAID' },
+          })
+          .catch((e) => console.warn('Gagal update status order dari webhook:', e.message));
+      }
+    }
+
+    // Midtrans mewajibkan respon HTTP 200 OK
+    return res.status(200).json({ status: 'OK' });
+  } catch (err: any) {
+    console.error('Error handleMidtransNotification:', err);
+    return res.status(200).json({ status: 'OK' });
+  }
+};
+
+
 

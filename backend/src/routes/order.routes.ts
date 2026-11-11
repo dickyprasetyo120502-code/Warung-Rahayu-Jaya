@@ -1,5 +1,10 @@
 import { Router } from 'express';
-import { createOrder, getOrders, createSnapToken } from '../controllers/order.controller';
+import {
+  createOrder,
+  getOrders,
+  createSnapToken,
+  handleMidtransNotification,
+} from '../controllers/order.controller';
 import { verifyToken, requireKasirOrAdmin } from '../middlewares/auth.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import { z } from 'zod';
@@ -26,6 +31,9 @@ const createOrderSchema = z.object({
 
 // Endpoint untuk mendapatkan Snap Token Midtrans QRIS dinamis
 router.post('/snap-token', createSnapToken);
+
+// Webhook Notifikasi Midtrans (Opsional untuk Ngrok / Server Publik)
+router.post('/notification', handleMidtransNotification);
 
 // Kasir dan publik dapat membuat order
 router.post('/', validateBody(createOrderSchema), createOrder);
