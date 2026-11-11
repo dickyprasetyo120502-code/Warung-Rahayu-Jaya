@@ -138,11 +138,12 @@ export default function CartSection({
       );
     }
 
-    // 2. Potong stok menu & catat transaksi lokal
+    // 2. Potong stok menu & catat transaksi lokal (otomatis sinkron ke Admin)
     deductStock(cartItems);
     recordTransaction(orderData);
     incrementOrderNumber();
 
+    // 3. Kosongkan keranjang dan reset form pembayaran kasir
     setIsProcessing(false);
     onResetCart();
     setNama('');
@@ -153,7 +154,10 @@ export default function CartSection({
     setRedirectUrl(null);
     setOrderNumber(getNextOrderNumber());
 
-    // 3. LANGSUNG MUNCULKAN STRUK RESMI (RECEIPT MODAL)
+    // 4. Otomatis gulir (scroll) layar ke bagian paling atas
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // 5. Terbitkan struk resmi (Receipt Modal)
     onShowReceipt(orderData);
   };
 

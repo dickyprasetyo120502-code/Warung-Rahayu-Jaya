@@ -128,7 +128,11 @@ export default function App() {
           onTambah={(id) => addItem(id, stocks[id])}
           onKurang={removeItem}
           onResetCart={resetCart}
-          onShowReceipt={(data) => setReceiptData(data)}
+          onShowReceipt={(data) => {
+            setReceiptData(data);
+            resetCart();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
         />
 
         <AboutSection />
@@ -140,7 +144,11 @@ export default function App() {
       {/* Modal Struk Transaksi Resmi */}
       <ReceiptModal
         orderData={receiptData}
-        onClose={() => setReceiptData(null)}
+        onClose={() => {
+          setReceiptData(null);
+          resetCart();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
       />
     </>
   );

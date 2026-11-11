@@ -252,6 +252,32 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
               🖨️ Print Nota
             </button>
           </div>
+
+          <button
+            type="button"
+            className="btn-receipt-finish"
+            onClick={onClose}
+            style={{
+              marginTop: '8px',
+              padding: '12px',
+              backgroundColor: '#193D2C',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: '800',
+              fontSize: '14px',
+              cursor: 'pointer',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              boxShadow: '0 4px 12px rgba(25, 61, 44, 0.25)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>✅</span> Selesai & Buat Pesanan Baru
+          </button>
         </div>
       </div>
     </div>
