@@ -108,6 +108,23 @@ export const createOrder = async (req: Request, res: Response) => {
         const authHeader =
           'Basic ' + Buffer.from(process.env.MIDTRANS_SERVER_KEY + ':').toString('base64');
 
+        // Sertakan rincian item beserta PB1 10% agar jumlah item_details tepat sama dengan gross_amount
+        const itemsWithTax: any[] = orderResult.items.map((it: any) => ({
+          id: it.menuItemId,
+          price: it.harga,
+          quantity: it.qty,
+          name: it.nama.substring(0, 50),
+        }));
+
+        if (orderResult.tax > 0) {
+          itemsWithTax.push({
+            id: 'tax-pb1',
+            price: orderResult.tax,
+            quantity: 1,
+            name: 'PB1 / Pajak Restoran (10%)',
+          });
+        }
+
         const snapPayload = {
           transaction_details: {
             order_id: `${orderResult.orderNumber}-${Date.now().toString().slice(-4)}`,
@@ -117,12 +134,7 @@ export const createOrder = async (req: Request, res: Response) => {
             first_name: orderResult.nama,
             phone: orderResult.telepon || undefined,
           },
-          item_details: orderResult.items.map((it: any) => ({
-            id: it.menuItemId,
-            price: it.harga,
-            quantity: it.qty,
-            name: it.nama.substring(0, 50),
-          })),
+          item_details: itemsWithTax,
         };
 
         const snapRes = await fetch(snapEndpoint, {
@@ -201,6 +213,30 @@ export const createSnapToken = async (req: Request, res: Response) => {
     const baseKey = rawKey.replace(/["']/g, '').trim();
     const isProdConfig = process.env.MIDTRANS_IS_PRODUCTION === 'true';
 
+    // Hitung total item dan sertakan PB1 10% agar jumlah total item_details sama persis dengan gross_amount
+    const totalItemSubtotal = Array.isArray(items)
+      ? items.reduce((acc: number, it: any) => acc + Number(it.price || it.harga) * Number(it.quantity || it.qty || 1), 0)
+      : 0;
+
+    let itemDetailsList: any[] = Array.isArray(items) && items.length > 0
+      ? items.map((it: any) => ({
+          id: String(it.id || 'item'),
+          price: Number(it.price || it.harga),
+          quantity: Number(it.quantity || it.qty || 1),
+          name: String(it.name || it.nama || 'Menu').substring(0, 50),
+        }))
+      : [];
+
+    const taxDiff = Number(grossAmount) - totalItemSubtotal;
+    if (taxDiff > 0 && itemDetailsList.length > 0) {
+      itemDetailsList.push({
+        id: 'tax-pb1',
+        price: taxDiff,
+        quantity: 1,
+        name: 'PB1 / Pajak Restoran (10%)',
+      });
+    }
+
     const snapPayload = {
       transaction_details: {
         order_id: `${orderNumber || 'WRJ'}-${Date.now().toString().slice(-4)}`,
@@ -210,14 +246,7 @@ export const createSnapToken = async (req: Request, res: Response) => {
         first_name: customerName || 'Pelanggan',
         phone: phone || undefined,
       },
-      item_details: Array.isArray(items) && items.length > 0
-        ? items.map((it: any) => ({
-            id: String(it.id || 'item'),
-            price: Number(it.price || it.harga),
-            quantity: Number(it.quantity || it.qty || 1),
-            name: String(it.name || it.nama || 'Menu').substring(0, 50),
-          }))
-        : undefined,
+      item_details: itemDetailsList.length > 0 ? itemDetailsList : undefined,
     };
 
     const prodEndpoint = 'https://app.midtrans.com/snap/v1/transactions';
