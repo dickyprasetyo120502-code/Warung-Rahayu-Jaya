@@ -190,20 +190,16 @@ export const getOrders = async (_req: Request, res: Response) => {
 export const createSnapToken = async (req: Request, res: Response) => {
   try {
     const { orderNumber, grossAmount, customerName, phone, items } = req.body;
-    const serverKey = process.env.MIDTRANS_SERVER_KEY;
-    if (!serverKey) {
+    const rawKey = process.env.MIDTRANS_SERVER_KEY;
+    if (!rawKey) {
       return res.status(500).json({
         success: false,
         message: 'Midtrans Server Key belum terpasang di backend .env',
       });
     }
 
-    const isProduction = process.env.MIDTRANS_IS_PRODUCTION === 'true';
-    const snapEndpoint = isProduction
-      ? 'https://app.midtrans.com/snap/v1/transactions'
-      : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
-
-    const authHeader = 'Basic ' + Buffer.from(serverKey + ':').toString('base64');
+    const baseKey = rawKey.replace(/["']/g, '').trim();
+    const isProdConfig = process.env.MIDTRANS_IS_PRODUCTION === 'true';
 
     const snapPayload = {
       transaction_details: {
@@ -224,29 +220,116 @@ export const createSnapToken = async (req: Request, res: Response) => {
         : undefined,
     };
 
-    const snapRes = await fetch(snapEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: authHeader,
-      },
-      body: JSON.stringify(snapPayload),
+    const prodEndpoint = 'https://app.midtrans.com/snap/v1/transactions';
+    const sandEndpoint = 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+
+    // Kumpulan kandidat konfigurasi untuk mencoba mencocokkan kredensial Sandbox / Production secara cerdas
+    const candidates: { endpoint: string; key: string; isProduction: boolean; desc: string }[] = [];
+
+    // 1. Coba konfigurasi sesuai .env terlebih dahulu
+    candidates.push({
+      endpoint: isProdConfig ? prodEndpoint : sandEndpoint,
+      key: baseKey,
+      isProduction: isProdConfig,
+      desc: isProdConfig ? 'Production (sesuai config)' : 'Sandbox (sesuai config)',
     });
 
-    if (!snapRes.ok) {
-      const errText = await snapRes.text();
-      console.warn('Midtrans snap error response:', errText);
-      return res.status(400).json({
-        success: false,
-        message: 'Midtrans API error: ' + errText,
+    // 2. Coba lingkungan sebaliknya (Sandbox jika config Production, atau sebaliknya)
+    candidates.push({
+      endpoint: isProdConfig ? sandEndpoint : prodEndpoint,
+      key: baseKey,
+      isProduction: !isProdConfig,
+      desc: !isProdConfig ? 'Production (auto-detect)' : 'Sandbox (auto-detect)',
+    });
+
+    // 3. Jika Server Key memiliki double-dash 'Mid-server--...', coba single-dash 'Mid-server-...'
+    if (baseKey.includes('--')) {
+      const singleDash = baseKey.replace('--', '-');
+      candidates.push({
+        endpoint: sandEndpoint,
+        key: singleDash,
+        isProduction: false,
+        desc: 'Sandbox (single-dash fix)',
+      });
+      candidates.push({
+        endpoint: prodEndpoint,
+        key: singleDash,
+        isProduction: true,
+        desc: 'Production (single-dash fix)',
+      });
+      candidates.push({
+        endpoint: sandEndpoint,
+        key: 'SB-' + singleDash,
+        isProduction: false,
+        desc: 'Sandbox (SB- + single-dash fix)',
       });
     }
 
-    const data: any = await snapRes.json();
-    return res.json({
-      success: true,
-      token: data.token,
-      redirect_url: data.redirect_url,
+    // 4. Jika Server Key diawali 'Mid-server-', coba pasangkan prefix 'SB-' untuk Sandbox
+    if (baseKey.startsWith('Mid-server-')) {
+      candidates.push({
+        endpoint: sandEndpoint,
+        key: 'SB-' + baseKey,
+        isProduction: false,
+        desc: 'Sandbox (dengan prefix SB-)',
+      });
+    }
+
+    // 5. Jika diawali 'SB-', coba tanpa 'SB-' untuk Production
+    if (baseKey.startsWith('SB-')) {
+      const withoutSB = baseKey.replace(/^SB-/, '');
+      candidates.push({
+        endpoint: prodEndpoint,
+        key: withoutSB,
+        isProduction: true,
+        desc: 'Production (tanpa prefix SB-)',
+      });
+      candidates.push({
+        endpoint: sandEndpoint,
+        key: withoutSB,
+        isProduction: false,
+        desc: 'Sandbox (tanpa prefix SB-)',
+      });
+    }
+
+    let lastError = 'Unauthorized';
+
+    for (const cand of candidates) {
+      try {
+        const authHeader = 'Basic ' + Buffer.from(cand.key + ':').toString('base64');
+        const snapRes = await fetch(cand.endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: authHeader,
+          },
+          body: JSON.stringify(snapPayload),
+        });
+
+        if (snapRes.ok) {
+          const data: any = await snapRes.json();
+          console.log(`✅ [Midtrans Snap Berhasil] Terhubung melalui ${cand.desc}`);
+          return res.json({
+            success: true,
+            token: data.token,
+            redirect_url: data.redirect_url,
+            isProduction: cand.isProduction,
+            clientKey: process.env.MIDTRANS_CLIENT_KEY,
+          });
+        } else {
+          lastError = await snapRes.text();
+        }
+      } catch (err: any) {
+        lastError = err.message;
+      }
+    }
+
+    console.warn('Koneksi Midtrans gagal pada semua mode dengan respons:', lastError);
+    return res.status(401).json({
+      success: false,
+      message:
+        'Server Key Midtrans tidak diotorisasi (Unauthorized). Pastikan Anda menyalin Server Key dari dashboard Midtrans (menu Settings > Access Keys).',
+      errorDetails: lastError,
     });
   } catch (err: any) {
     console.error('Error createSnapToken:', err);

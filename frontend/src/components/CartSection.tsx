@@ -199,9 +199,39 @@ export default function CartSection({
         setSnapToken(res.data.token);
         setRedirectUrl(res.data.redirect_url);
 
-        // Jika library Snap Midtrans aktif di window
-        if ((window as any).snap && typeof (window as any).snap.pay === 'function') {
-          (window as any).snap.pay(res.data.token, {
+        const isProd = res.data?.isProduction;
+        const clientKey = res.data?.clientKey || 'Mid-client-dEbUyTAiJ1ZXyGdi';
+        const scriptSrc = isProd
+          ? 'https://app.midtrans.com/snap/snap.js'
+          : 'https://app.sandbox.midtrans.com/snap/snap.js';
+
+        // Pastikan script Midtrans Snap yang cocok (Sandbox atau Production) dimuat
+        let snapObj = (window as any).snap;
+        if (
+          !snapObj ||
+          !(window as any).__midtrans_src ||
+          (window as any).__midtrans_src !== scriptSrc
+        ) {
+          const old = document.getElementById('snap-midtrans-script');
+          if (old) old.remove();
+          const script = document.createElement('script');
+          script.id = 'snap-midtrans-script';
+          script.src = scriptSrc;
+          script.setAttribute('data-client-key', clientKey);
+          document.head.appendChild(script);
+          await new Promise((resolve) => {
+            script.onload = () => {
+              (window as any).__midtrans_src = scriptSrc;
+              resolve(true);
+            };
+            script.onerror = () => resolve(false);
+          });
+          snapObj = (window as any).snap;
+        }
+
+        // Jalankan popup Snap resmi Midtrans
+        if (snapObj && typeof snapObj.pay === 'function') {
+          snapObj.pay(res.data.token, {
             onSuccess: function (result: any) {
               console.log('Midtrans Snap Sukses:', result);
               handleExecutePayment('qris');
@@ -212,7 +242,7 @@ export default function CartSection({
             },
             onError: function (err: any) {
               console.error('Midtrans Snap Eror:', err);
-              alert('Pembayaran QRIS Midtrans gagal atau ditolak.');
+              alert('Pembayaran QRIS Midtrans dibatalkan atau terjadi kendala.');
             },
             onClose: function () {
               console.log('Pop-up Midtrans ditutup kasir/pelanggan.');
@@ -222,9 +252,16 @@ export default function CartSection({
       }
     } catch (err: any) {
       console.warn('Gagal memanggil endpoint Midtrans:', err.message);
-      alert(
-        'Catatan: Backend sedang offline atau belum terhubung ke Midtrans API. Anda tetap dapat mengonfirmasi pembayaran QRIS langsung dengan tombol hijau di bawah.'
-      );
+      const backendMsg = err.response?.data?.message;
+      if (backendMsg) {
+        alert(
+          `⚠️ ${backendMsg}\n\n💡 Catatan Kasir: Anda tetap dapat memproses pesanan dan mencetak struk dengan menekan tombol hijau "Pelanggan Sudah Scan & Berhasil (Cetak Struk)" di bawah.`
+        );
+      } else {
+        alert(
+          'Catatan: Backend sedang offline atau belum terhubung ke Midtrans API. Anda tetap dapat mengonfirmasi pembayaran QRIS langsung dengan tombol hijau di bawah.'
+        );
+      }
     } finally {
       setIsLoadingSnap(false);
     }
