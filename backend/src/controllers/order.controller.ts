@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import crypto from 'crypto';
 import prisma from '../config/prisma';
 
 // Helper generator no order berurutan dari DB: WRJ-001, WRJ-002, dst
@@ -75,7 +76,7 @@ export const createOrder = async (req: Request, res: Response) => {
           tax,
           total,
           paymentMethod,
-          paymentStatus: 'PAID',
+         paymentStatus: paymentMethod === 'qris' ? 'PENDING' : 'PAID',
           kasirName: 'Kasir',
           items: {
             create: cartItems.map((it: any) => ({
@@ -369,13 +370,46 @@ export const createSnapToken = async (req: Request, res: Response) => {
   }
 };
 
-// Handler Webhook Notifikasi Otomatis dari Midtrans (Opsional via Ngrok/Server Publik)
+// Handler Webhook Notifikasi Otomatis dari Midtrans (Webhook Notification URL)
 export const handleMidtransNotification = async (req: Request, res: Response) => {
   try {
     const notification = req.body;
-    console.log('🔔 [Midtrans Webhook Received]:', notification);
+    console.log('🔔 [Midtrans Webhook Received]:', JSON.stringify(notification));
 
-    const { order_id, transaction_status, fraud_status } = notification;
+    const {
+      order_id,
+      transaction_status,
+      fraud_status,
+      signature_key,
+      status_code,
+      gross_amount,
+    } = notification;
+
+    if (!order_id) {
+      return res.status(400).json({ success: false, message: 'order_id wajib disertakan' });
+    }
+
+    // Verifikasi Signature Key untuk keamanan webhook jika tersedia
+    const serverKey = process.env.MIDTRANS_SERVER_KEY?.replace(/["']/g, '').trim();
+    if (serverKey && signature_key && gross_amount && status_code) {
+      const expectedSignature = crypto
+        .createHash('sha512')
+        .update(`${order_id}${status_code}${gross_amount}${serverKey}`)
+        .digest('hex');
+
+      if (signature_key !== expectedSignature) {
+        console.warn('⚠️ [Midtrans Webhook] Signature key tidak cocok, request ditolak.');
+        return res.status(403).json({ success: false, message: 'Invalid signature key' });
+      }
+    }
+
+    // Ekstrak orderNumber (misal "WRJ-001-7053" -> "WRJ-001")
+    const rawOrderId = String(order_id);
+    const orderNumber = rawOrderId.includes('-')
+      ? rawOrderId.split('-').slice(0, 2).join('-')
+      : rawOrderId;
+
+    let newStatus = 'PENDING';
 
     if (
       transaction_status === 'capture' ||
@@ -383,17 +417,37 @@ export const handleMidtransNotification = async (req: Request, res: Response) =>
       transaction_status === 'success'
     ) {
       if (fraud_status !== 'challenge') {
-        const orderNumber = String(order_id).split('-').slice(0, 2).join('-');
-        await prisma.order
-          .updateMany({
-            where: { orderNumber },
-            data: { paymentStatus: 'PAID' },
-          })
-          .catch((e) => console.warn('Gagal update status order dari webhook:', e.message));
+        newStatus = 'PAID';
       }
+    } else if (transaction_status === 'pending') {
+      newStatus = 'PENDING';
+    } else if (
+      transaction_status === 'deny' ||
+      transaction_status === 'cancel' ||
+      transaction_status === 'expire' ||
+      transaction_status === 'failure'
+    ) {
+      newStatus = 'CANCELLED';
     }
 
-    // Midtrans mewajibkan respon HTTP 200 OK
+    // Update status di database PostgreSQL
+    const updated = await prisma.order.updateMany({
+      where: {
+        OR: [
+          { orderNumber: orderNumber },
+          { orderNumber: rawOrderId },
+        ],
+      },
+      data: {
+        paymentStatus: newStatus,
+      },
+    });
+
+    console.log(
+      `✅ [Midtrans Webhook] Pesanan ${orderNumber} (status: ${transaction_status}) diperbarui menjadi '${newStatus}' (${updated.count} baris terupdate).`
+    );
+
+    // Midtrans selalu membutuhkan HTTP 200 OK
     return res.status(200).json({ status: 'OK' });
   } catch (err: any) {
     console.error('Error handleMidtransNotification:', err);

@@ -118,7 +118,7 @@ export default function CartSection({
       tax,
       total: totalAkhir,
       paymentMethod: selectedMethod,
-      paymentStatus: 'PAID',
+      paymentStatus: selectedMethod === 'qris' ? 'PENDING' : 'PAID',
       cashGiven: actualCash,
       change: actualChange,
       date: new Date().toLocaleString('id-ID', {

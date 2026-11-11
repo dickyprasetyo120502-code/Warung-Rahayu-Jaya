@@ -110,8 +110,19 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
               boxShadow: '0 2px 8px rgba(25, 61, 44, 0.2)',
             }}
           />
-          <div className="receipt-icon-success">✓</div>
-          <h2>Pembayaran Berhasil!</h2>
+          <div
+            className="receipt-icon-success"
+            style={{
+              backgroundColor: orderData.paymentStatus === 'PENDING' ? '#F59E0B' : '#15803D',
+            }}
+          >
+            {orderData.paymentStatus === 'PENDING' ? '⏳' : '✓'}
+          </div>
+          <h2>
+            {orderData.paymentStatus === 'PENDING'
+              ? 'Menunggu Pembayaran'
+              : 'Pembayaran Berhasil!'}
+          </h2>
           <p className="receipt-subtitle">Warung Rahayu Jaya</p>
           <small className="receipt-address">
             Villa Gading Harapan 3 No.19, Babelan, Bekasi
@@ -215,8 +226,24 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
 
           <div className="totals-row payment-status-row">
             <span>Metode Bayar</span>
-            <span className="badge-payment-success">
-              {paymentMethod.toUpperCase()} (LUNAS)
+            <span
+              className={
+                orderData.paymentStatus === 'PENDING'
+                  ? 'badge-payment-pending'
+                  : 'badge-payment-success'
+              }
+              style={{
+                backgroundColor:
+                  orderData.paymentStatus === 'PENDING' ? '#F59E0B' : '#15803D',
+                color: '#FFFFFF',
+                padding: '3px 8px',
+                borderRadius: '4px',
+                fontWeight: '800',
+                fontSize: '11px',
+              }}
+            >
+              {paymentMethod.toUpperCase()}{' '}
+              {orderData.paymentStatus === 'PENDING' ? '(PENDING)' : '(LUNAS)'}
             </span>
           </div>
         </div>
