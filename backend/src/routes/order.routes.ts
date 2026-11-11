@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createOrder, getOrders } from '../controllers/order.controller';
+import { createOrder, getOrders, createSnapToken } from '../controllers/order.controller';
 import { verifyToken, requireKasirOrAdmin } from '../middlewares/auth.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import { z } from 'zod';
@@ -23,6 +23,9 @@ const createOrderSchema = z.object({
   ).min(1),
   paymentMethod: z.enum(['qris', 'cash', 'edc']),
 });
+
+// Endpoint untuk mendapatkan Snap Token Midtrans QRIS dinamis
+router.post('/snap-token', createSnapToken);
 
 // Kasir dan publik dapat membuat order
 router.post('/', validateBody(createOrderSchema), createOrder);

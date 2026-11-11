@@ -31,35 +31,48 @@ export default function CartSection({
   const [tableNumber, setTableNumber] = useState<string>('01');
   const [guestCount, setGuestCount] = useState<string>('2');
   const [catatan, setCatatan] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<'qris' | 'cash' | 'edc'>('qris');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'edc' | 'qris'>('cash');
 
   const [orderNumber, setOrderNumber] = useState<string>(getNextOrderNumber());
-  const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string>('');
   const [cashGiven, setCashGiven] = useState<number | ''>('');
+
+  // State untuk Midtrans QRIS Snap
+  const [snapToken, setSnapToken] = useState<string | null>(null);
+  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  const [isLoadingSnap, setIsLoadingSnap] = useState<boolean>(false);
 
   useEffect(() => {
     setOrderNumber(getNextOrderNumber());
   }, []);
 
   const subtotal = grandTotal;
-  const tax = Math.round(subtotal * 0.1);
+  const tax = Math.round(subtotal * 0.1); // PB1 10%
   const totalAkhir = subtotal + tax;
 
-  const actualCashGiven = typeof cashGiven === 'number' ? cashGiven : totalAkhir;
-  const kembalian = typeof cashGiven === 'number' && cashGiven >= totalAkhir ? cashGiven - totalAkhir : 0;
-  const isCashValid = paymentMethod !== 'cash' || (typeof cashGiven === 'number' && cashGiven >= totalAkhir);
+  // Kalkulasi uang tunai & kembalian
+  const numCash = typeof cashGiven === 'number' ? cashGiven : 0;
+  const kembalian = numCash >= totalAkhir ? numCash - totalAkhir : 0;
+  const isCashSufficient = paymentMethod !== 'cash' || (typeof cashGiven === 'number' && cashGiven >= totalAkhir);
 
-  const qrisPayload = `https://app.midtrans.com/snap/v2/vtweb/${orderNumber.replace(/[^a-zA-Z0-9]/g, '')}?amount=${totalAkhir}&customer=${encodeURIComponent(
-    nama || 'Tamu'
-  )}&desc=WarungRahayuJaya`;
+  // Quick cash generator
+  const getQuickAmounts = () => {
+    const standard = [50000, 100000, 150000, 200000, 500000];
+    const filtered = standard.filter((amt) => amt >= totalAkhir);
+    const roundedUp = Math.ceil(totalAkhir / 10000) * 10000;
+    const list = [...filtered];
+    if (roundedUp > totalAkhir && !list.includes(roundedUp)) {
+      list.unshift(roundedUp);
+    }
+    return list.slice(0, 4);
+  };
 
-  // Step 1: Validasi form & konfirmasi pesanan dengan Zod
-  const handleConfirmOrder = () => {
+  // Handler eksekusi pembayaran langsung -> simpan & langsung terbitkan struk
+  const handleExecutePayment = async (selectedMethod: 'cash' | 'edc' | 'qris') => {
     setValidationError('');
 
-    // ZOD VALIDATION FRONTEND
+    // Validasi input data pemesan & menu dengan ZOD
     const validationResult = createOrderSchema.safeParse({
       orderType,
       tableNumber: orderType === 'dine-in' ? tableNumber : null,
@@ -68,36 +81,29 @@ export default function CartSection({
       telepon: telepon.trim() || null,
       catatan: catatan.trim() || null,
       cartItems,
-      paymentMethod,
+      paymentMethod: selectedMethod,
     });
 
     if (!validationResult.success) {
       const issue = validationResult.error.issues[0]?.message || 'Data pesanan belum lengkap';
       setValidationError(issue);
-      alert(issue);
+      alert('⚠️ ' + issue);
       return;
     }
 
-    if (paymentMethod === 'cash' && typeof cashGiven !== 'number') {
-      setCashGiven(totalAkhir);
-    }
-
-    setIsConfirmed(true);
-
-    const payArea = document.getElementById('payment-action-area');
-    if (payArea) {
-      payArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  };
-
-  // Step 2: Selesaikan pembayaran -> kirim ke Backend REST API dengan Axios (fallback lokal jika offline)
-  const handlePaymentSuccess = async () => {
-    if (paymentMethod === 'cash' && typeof cashGiven === 'number' && cashGiven < totalAkhir) {
-      alert(`Uang tunai yang diberikan (Rp${cashGiven.toLocaleString('id-ID')}) kurang dari total tagihan (Rp${totalAkhir.toLocaleString('id-ID')})`);
-      return;
+    if (selectedMethod === 'cash') {
+      if (typeof cashGiven !== 'number' || cashGiven < totalAkhir) {
+        alert(
+          `Uang tunai yang diberikan (Rp${(numCash).toLocaleString('id-ID')}) kurang dari total tagihan (Rp${totalAkhir.toLocaleString('id-ID')}).`
+        );
+        return;
+      }
     }
 
     setIsProcessing(true);
+
+    const actualCash = selectedMethod === 'cash' ? numCash : undefined;
+    const actualChange = selectedMethod === 'cash' ? kembalian : undefined;
 
     const orderData: OrderData = {
       orderNumber,
@@ -111,10 +117,10 @@ export default function CartSection({
       subtotal,
       tax,
       total: totalAkhir,
-      paymentMethod,
+      paymentMethod: selectedMethod,
       paymentStatus: 'PAID',
-      cashGiven: paymentMethod === 'cash' ? actualCashGiven : undefined,
-      change: paymentMethod === 'cash' ? kembalian : undefined,
+      cashGiven: actualCash,
+      change: actualChange,
       date: new Date().toLocaleString('id-ID', {
         dateStyle: 'medium',
         timeStyle: 'short',
@@ -123,27 +129,105 @@ export default function CartSection({
     };
 
     try {
-      // 1. Coba simpan ke Backend PostgreSQL REST API dengan Axios
+      // 1. Simpan ke Backend PostgreSQL REST API via Axios
       await api.post('/orders', orderData);
     } catch (e: any) {
-      console.warn('Backend REST API tidak aktif, menyimpan ke penyimpanan lokal tersinkron:', e.message);
+      console.warn(
+        'Backend PostgreSQL offline/dalam proses sync, mencatat ke penyimpanan lokal kasir:',
+        e.message
+      );
     }
 
-    // 2. Simpan ke sinkronisasi lokal dan potong stok
+    // 2. Potong stok menu & catat transaksi lokal
     deductStock(cartItems);
     recordTransaction(orderData);
     incrementOrderNumber();
 
     setIsProcessing(false);
-    setIsConfirmed(false);
     onResetCart();
     setNama('');
     setTelepon('');
     setCatatan('');
     setCashGiven('');
+    setSnapToken(null);
+    setRedirectUrl(null);
     setOrderNumber(getNextOrderNumber());
 
+    // 3. LANGSUNG MUNCULKAN STRUK RESMI (RECEIPT MODAL)
     onShowReceipt(orderData);
+  };
+
+  // Handler Buka Layar QRIS Midtrans (Snap Pop-up)
+  const handleOpenMidtransQRIS = async () => {
+    // Validasi form data dulu
+    const validationResult = createOrderSchema.safeParse({
+      orderType,
+      tableNumber: orderType === 'dine-in' ? tableNumber : null,
+      guestCount: orderType === 'dine-in' ? guestCount : null,
+      nama: nama.trim(),
+      telepon: telepon.trim() || null,
+      catatan: catatan.trim() || null,
+      cartItems,
+      paymentMethod: 'qris',
+    });
+
+    if (!validationResult.success) {
+      const issue = validationResult.error.issues[0]?.message || 'Data pesanan belum lengkap';
+      setValidationError(issue);
+      alert('⚠️ ' + issue);
+      return;
+    }
+
+    setIsLoadingSnap(true);
+
+    try {
+      // Request Snap Token resmi dari backend
+      const res = await api.post('/orders/snap-token', {
+        orderNumber,
+        grossAmount: totalAkhir,
+        customerName: nama.trim() || 'Pelanggan',
+        phone: telepon.trim() || undefined,
+        items: cartItems.map((it) => ({
+          id: it.id,
+          price: it.harga,
+          quantity: it.qty,
+          name: it.nama,
+        })),
+      });
+
+      if (res.data?.token) {
+        setSnapToken(res.data.token);
+        setRedirectUrl(res.data.redirect_url);
+
+        // Jika library Snap Midtrans aktif di window
+        if ((window as any).snap && typeof (window as any).snap.pay === 'function') {
+          (window as any).snap.pay(res.data.token, {
+            onSuccess: function (result: any) {
+              console.log('Midtrans Snap Sukses:', result);
+              handleExecutePayment('qris');
+            },
+            onPending: function (result: any) {
+              console.log('Midtrans Snap Menunggu:', result);
+              handleExecutePayment('qris');
+            },
+            onError: function (err: any) {
+              console.error('Midtrans Snap Eror:', err);
+              alert('Pembayaran QRIS Midtrans gagal atau ditolak.');
+            },
+            onClose: function () {
+              console.log('Pop-up Midtrans ditutup kasir/pelanggan.');
+            },
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn('Gagal memanggil endpoint Midtrans:', err.message);
+      alert(
+        'Catatan: Backend sedang offline atau belum terhubung ke Midtrans API. Anda tetap dapat mengonfirmasi pembayaran QRIS langsung dengan tombol hijau di bawah.'
+      );
+    } finally {
+      setIsLoadingSnap(false);
+    }
   };
 
   return (
@@ -184,20 +268,14 @@ export default function CartSection({
             <button
               type="button"
               className={`pos-pill ${orderType === 'dine-in' ? 'active' : ''}`}
-              onClick={() => {
-                setOrderType('dine-in');
-                setIsConfirmed(false);
-              }}
+              onClick={() => setOrderType('dine-in')}
             >
               Dine-In
             </button>
             <button
               type="button"
               className={`pos-pill ${orderType === 'take-away' ? 'active' : ''}`}
-              onClick={() => {
-                setOrderType('take-away');
-                setIsConfirmed(false);
-              }}
+              onClick={() => setOrderType('take-away')}
             >
               Take Away
             </button>
@@ -217,10 +295,7 @@ export default function CartSection({
               type="text"
               placeholder="Contoh: Budi Santoso"
               value={nama}
-              onChange={(e) => {
-                setNama(e.target.value);
-                setIsConfirmed(false);
-              }}
+              onChange={(e) => setNama(e.target.value)}
               required
             />
           </div>
@@ -231,10 +306,7 @@ export default function CartSection({
               type="tel"
               placeholder="Contoh: 081234567890"
               value={telepon}
-              onChange={(e) => {
-                setTelepon(e.target.value);
-                setIsConfirmed(false);
-              }}
+              onChange={(e) => setTelepon(e.target.value)}
             />
           </div>
 
@@ -244,10 +316,7 @@ export default function CartSection({
                 <label>Nomor Meja *</label>
                 <select
                   value={tableNumber}
-                  onChange={(e) => {
-                    setTableNumber(e.target.value);
-                    setIsConfirmed(false);
-                  }}
+                  onChange={(e) => setTableNumber(e.target.value)}
                 >
                   <option value="01">Meja 01 (Indoor Depan)</option>
                   <option value="02">Meja 02 (Indoor Tengah)</option>
@@ -264,10 +333,7 @@ export default function CartSection({
                 <label>Jumlah Tamu</label>
                 <select
                   value={guestCount}
-                  onChange={(e) => {
-                    setGuestCount(e.target.value);
-                    setIsConfirmed(false);
-                  }}
+                  onChange={(e) => setGuestCount(e.target.value)}
                 >
                   <option value="1">1 Orang</option>
                   <option value="2">2 Orang</option>
@@ -285,10 +351,7 @@ export default function CartSection({
               type="text"
               placeholder="Contoh: Sambal dipisah, es batu sedikit, pedas sedang"
               value={catatan}
-              onChange={(e) => {
-                setCatatan(e.target.value);
-                setIsConfirmed(false);
-              }}
+              onChange={(e) => setCatatan(e.target.value)}
             />
           </div>
         </div>
@@ -333,10 +396,7 @@ export default function CartSection({
                   <div className="pos-qty-mini">
                     <button
                       type="button"
-                      onClick={() => {
-                        onKurang(item.id);
-                        setIsConfirmed(false);
-                      }}
+                      onClick={() => onKurang(item.id)}
                       title="Kurangi"
                     >
                       -
@@ -344,10 +404,7 @@ export default function CartSection({
                     <span>{item.qty}</span>
                     <button
                       type="button"
-                      onClick={() => {
-                        onTambah(item.id);
-                        setIsConfirmed(false);
-                      }}
+                      onClick={() => onTambah(item.id)}
                       title="Tambah"
                     >
                       +
@@ -378,64 +435,60 @@ export default function CartSection({
         )}
       </div>
 
-      {/* 4. Pemilihan Metode Pembayaran & Step Pembayaran */}
+      {/* 4. Pemilihan Metode Pembayaran & Konfirmasi Langsung */}
       {cartItems.length > 0 && (
         <div className="pos-payment-card" id="payment-action-area">
           <div className="pos-cart-header">
             <div className="pos-cart-title">
               <span>💳</span>
-              <strong>Metode Pembayaran</strong>
+              <strong>Pilih Metode Pembayaran</strong>
             </div>
-            <span className="pos-count-tag">Pilih 1 Opsi</span>
+            <span className="pos-count-tag">1 Langkah Bayar & Cetak Struk</span>
           </div>
 
           <div className="payment-options-grid">
             <button
               type="button"
-              className={`payment-option-card ${paymentMethod === 'qris' ? 'active' : ''}`}
-              onClick={() => {
-                setPaymentMethod('qris');
-                setIsConfirmed(false);
-              }}
-            >
-              <div className="pay-tag-midtrans">MIDTRANS QRIS</div>
-              <div className="pay-icon">📱</div>
-              <strong className="pay-name">QRIS Dinamis</strong>
-              <small className="pay-desc">Gopay, OVO, Dana, BCA</small>
-            </button>
-
-            <button
-              type="button"
               className={`payment-option-card ${paymentMethod === 'cash' ? 'active' : ''}`}
               onClick={() => {
                 setPaymentMethod('cash');
-                setIsConfirmed(false);
+                if (typeof cashGiven !== 'number') {
+                  setCashGiven(totalAkhir);
+                }
               }}
             >
               <div className="pay-icon">💵</div>
-              <strong className="pay-name">Tunai</strong>
-              <small className="pay-desc">Cash di Kasir</small>
+              <strong className="pay-name">Tunai (Cash)</strong>
+              <small className="pay-desc">Hitung Kembalian Kasir</small>
             </button>
 
             <button
               type="button"
               className={`payment-option-card ${paymentMethod === 'edc' ? 'active' : ''}`}
-              onClick={() => {
-                setPaymentMethod('edc');
-                setIsConfirmed(false);
-              }}
+              onClick={() => setPaymentMethod('edc')}
             >
               <div className="pay-icon">💳</div>
               <strong className="pay-name">EDC / Kartu</strong>
-              <small className="pay-desc">Debit / Kredit</small>
+              <small className="pay-desc">Debit & Kredit Bank</small>
+            </button>
+
+            <button
+              type="button"
+              className={`payment-option-card ${paymentMethod === 'qris' ? 'active' : ''}`}
+              onClick={() => setPaymentMethod('qris')}
+            >
+              <div className="pay-tag-midtrans">MIDTRANS</div>
+              <div className="pay-icon">📱</div>
+              <strong className="pay-name">QRIS Dinamis</strong>
+              <small className="pay-desc">GoPay, OVO, Dana, BCA</small>
             </button>
           </div>
 
-          {/* ================= TABEL RINCIAN PEMBAYARAN SEBELUM/SAAT KONFIRMASI ================= */}
+          {/* ================= TABEL RINCIAN PEMBAYARAN ================= */}
           <div className="pos-order-summary-table-box">
             <div className="table-box-header">
               <span className="table-box-title">
-                📋 Tabel Rincian Pembayaran Pesanan
+                📋 Ringkasan Tagihan Transaksi
               </span>
               <span className="table-box-badge">
                 {orderType === 'dine-in' ? `Dine-In (Meja ${tableNumber || '01'})` : 'Take Away (Bungkus)'}
@@ -473,7 +526,7 @@ export default function CartSection({
 
             <div className="pos-table-calc-box">
               <div className="table-calc-row">
-                <span>Subtotal ({cartItems.reduce((acc, it) => acc + it.qty, 0)} porsi)</span>
+                <span>Subtotal ({cartItems.reduce((acc, it) => acc + it.qty, 0)} item)</span>
                 <span>Rp{subtotal.toLocaleString('id-ID')}</span>
               </div>
               <div className="table-calc-row">
@@ -487,176 +540,256 @@ export default function CartSection({
             </div>
           </div>
 
-          {/* ================= STEP 1: BELUM KONFIRMASI ================= */}
-          {!isConfirmed ? (
-            <div className="pos-pre-confirm-notice">
-              <p className="notice-text">
-                ⚠️ Pastikan nama pemesan dan nomor meja (jika Dine-In) sudah sesuai dengan tabel di atas.
-                Klik <strong>Konfirmasi Pesanan</strong> untuk melanjutkan proses pembayaran.
-              </p>
-              <button
-                type="button"
-                className="btn-pos-confirm"
-                onClick={handleConfirmOrder}
-              >
-                Konfirmasi Pesanan (Rp{totalAkhir.toLocaleString('id-ID')})
-              </button>
-            </div>
-          ) : (
-            /* ================= STEP 2: SUDAH KONFIRMASI (QRIS / TUNAI / EDC AKTIF) ================= */
-            <div className="pos-confirmed-payment-box">
-              {paymentMethod === 'qris' && (
-                <div className="qris-display-box">
-                  <div className="qris-box-header">
-                    <span className="qris-badge-logo">QRIS</span>
-                    <strong>Midtrans Dynamic Payment</strong>
-                  </div>
+          {/* ================= AREA METODE PEMBAYARAN: TUNAI (CASH) ================= */}
+          {paymentMethod === 'cash' && (
+            <div className="cash-payment-form" style={{ marginTop: '16px' }}>
+              <div className="cash-form-title">
+                <span>💵</span> Tanya Dulu Duitnya: Berapa Uang Diterima dari Pelanggan?
+              </div>
 
-                  <div className="qris-qr-wrapper">
-                    <QRCodeSVG
-                      value={qrisPayload}
-                      size={200}
-                      level="H"
-                      includeMargin={true}
-                    />
-                  </div>
+              <input
+                type="number"
+                className="cash-input-field"
+                placeholder={`Ketik nominal, contoh: ${totalAkhir}`}
+                value={cashGiven}
+                onChange={(e) => {
+                  const val = e.target.value ? parseInt(e.target.value, 10) : '';
+                  setCashGiven(val);
+                }}
+                autoFocus
+              />
 
-                  <div className="qris-scanning-indicator">
-                    <span className="spin-dot"></span>
-                    <span>Menunggu pelanggan memindai QR Code...</span>
-                  </div>
-
-                  <p className="qris-instructions">
-                    Arahkan layar atau cetak kode QR kepada customer. Mendukung BCA, GoPay, OVO, DANA, ShopeePay, dan seluruh m-Banking.
-                  </p>
-
-                  <div className="payment-action-buttons">
-                    <button
-                      type="button"
-                      className="btn-pay-now btn-pay-qris"
-                      onClick={handlePaymentSuccess}
-                      disabled={isProcessing}
-                    >
-                      {isProcessing ? 'Memproses Transaksi...' : `Selesaikan & Terbitkan Struk (Rp${totalAkhir.toLocaleString('id-ID')})`}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {paymentMethod === 'cash' && (
-                <div className="cash-display-box active">
-                  <div className="cash-icon-header">💵</div>
-                  <h3>Pembayaran Tunai Kasir</h3>
-                  <p className="cash-amount">
-                    Total Tagihan: <strong>Rp{totalAkhir.toLocaleString('id-ID')}</strong>
-                  </p>
-
-                  {/* Form Kalkulator Kembalian Kasir */}
-                  <div className="cash-payment-form">
-                    <div className="cash-form-title">
-                      <span>💰</span> Input Uang Diterima dari Pelanggan:
-                    </div>
-                    <input
-                      type="number"
-                      className="cash-input-field"
-                      placeholder={`Minimal Rp${totalAkhir.toLocaleString('id-ID')}`}
-                      value={cashGiven}
-                      onChange={(e) => {
-                        const val = e.target.value ? parseInt(e.target.value, 10) : '';
-                        setCashGiven(val);
-                      }}
-                    />
-
-                    <div className="quick-cash-btns">
-                      <button
-                        type="button"
-                        className="btn-quick-cash"
-                        onClick={() => setCashGiven(totalAkhir)}
-                      >
-                        Uang Pas (Rp{totalAkhir.toLocaleString('id-ID')})
-                      </button>
-                      {[50000, 100000, 150000, 200000].map(
-                        (amt) =>
-                          amt >= totalAkhir && (
-                            <button
-                              key={amt}
-                              type="button"
-                              className="btn-quick-cash"
-                              onClick={() => setCashGiven(amt)}
-                            >
-                              Rp{amt.toLocaleString('id-ID')}
-                            </button>
-                          )
-                      )}
-                    </div>
-
-                    <div className="cash-change-display">
-                      <span>Uang Kembalian (Change):</span>
-                      <strong>Rp{kembalian.toLocaleString('id-ID')}</strong>
-                    </div>
-                  </div>
-
-                  <div className="payment-action-buttons">
-                    <button
-                      type="button"
-                      className="btn-pay-now btn-pay-cash"
-                      onClick={handlePaymentSuccess}
-                      disabled={isProcessing || !isCashValid}
-                    >
-                      {isProcessing
-                        ? 'Menyimpan...'
-                        : !isCashValid
-                        ? 'Uang Diterima Kurang'
-                        : `Uang Diterima & Cetak Struk (Kembalian: Rp${kembalian.toLocaleString('id-ID')})`}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {paymentMethod === 'edc' && (
-                <div className="cash-display-box active">
-                  <div className="cash-icon-header">💳</div>
-                  <h3>Pembayaran Mesin EDC / Debit</h3>
-                  <p className="cash-amount">
-                    Total Transaksi Kartu: <strong>Rp{totalAkhir.toLocaleString('id-ID')}</strong>
-                  </p>
-                  <p className="cash-instruction">
-                    Silakan gesek atau tap kartu Debit / Kredit pelanggan pada mesin EDC Mandiri / BCA / BRI. Setelah transaksi approved di mesin EDC, tekan tombol berikut untuk menyelesaikan.
-                  </p>
-
-                  <div className="payment-action-buttons">
-                    <button
-                      type="button"
-                      className="btn-pay-now btn-pay-edc"
-                      onClick={handlePaymentSuccess}
-                      disabled={isProcessing}
-                    >
-                      {isProcessing ? 'Menyimpan...' : `EDC Approved & Cetak Struk (Rp${totalAkhir.toLocaleString('id-ID')})`}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div style={{ marginTop: '12px', textAlign: 'center' }}>
+              {/* Tombol Cepat Pilihan Uang */}
+              <div className="quick-cash-btns">
                 <button
                   type="button"
-                  onClick={() => setIsConfirmed(false)}
+                  className="btn-quick-cash"
                   style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#6B7280',
-                    fontSize: '12px',
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
+                    backgroundColor: cashGiven === totalAkhir ? '#22C55E' : '#FFFFFF',
+                    color: cashGiven === totalAkhir ? '#FFFFFF' : '#15803D',
+                    fontWeight: '800',
                   }}
+                  onClick={() => setCashGiven(totalAkhir)}
                 >
-                  ← Edit Data / Ubah Menu Pesanan
+                  Uang Pas (Rp{totalAkhir.toLocaleString('id-ID')})
+                </button>
+
+                {getQuickAmounts().map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    className="btn-quick-cash"
+                    style={{
+                      backgroundColor: cashGiven === amt ? '#22C55E' : '#FFFFFF',
+                      color: cashGiven === amt ? '#FFFFFF' : '#15803D',
+                      fontWeight: '800',
+                    }}
+                    onClick={() => setCashGiven(amt)}
+                  >
+                    Rp{amt.toLocaleString('id-ID')}
+                  </button>
+                ))}
+              </div>
+
+              {/* PENGINGAT KEMBALIAN (CHANGE REMINDER) SANGAT JELAS */}
+              <div style={{ marginTop: '12px' }}>
+                {cashGiven === '' || cashGiven === 0 ? (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      backgroundColor: '#FEF3C7',
+                      border: '1.5px solid #F59E0B',
+                      color: '#B45309',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    💡 Masukkan atau pilih nominal uang yang diserahkan pelanggan di atas.
+                  </div>
+                ) : cashGiven < totalAkhir ? (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      backgroundColor: '#FEE2E2',
+                      border: '1.5px solid #EF4444',
+                      color: '#B91C1C',
+                      fontSize: '13px',
+                      fontWeight: '700',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <span>⚠️ Uang Diterima Masih Kurang:</span>
+                    <strong style={{ fontSize: '15px' }}>
+                      - Rp{(totalAkhir - cashGiven).toLocaleString('id-ID')}
+                    </strong>
+                  </div>
+                ) : cashGiven === totalAkhir ? (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      backgroundColor: '#E0F2FE',
+                      border: '1.5px solid #38BDF8',
+                      color: '#0369A1',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <span>✅ Uang Pas Sesuai Tagihan:</span>
+                    <strong style={{ fontSize: '16px' }}>Kembalian Rp 0</strong>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: '10px',
+                      backgroundColor: '#DCFCE7',
+                      border: '2px solid #22C55E',
+                      color: '#14532D',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 2px 6px rgba(34, 197, 94, 0.15)',
+                    }}
+                  >
+                    <div>
+                      <span style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        💰 PENGINGAT UANG KEMBALIAN PELANGGAN:
+                      </span>
+                      <div style={{ fontSize: '11px', color: '#166534', marginTop: '2px' }}>
+                        Diterima Rp{cashGiven.toLocaleString('id-ID')} — Tagihan Rp{totalAkhir.toLocaleString('id-ID')}
+                      </div>
+                    </div>
+                    <strong style={{ fontSize: '22px', color: '#14532D', fontWeight: '900' }}>
+                      Rp{kembalian.toLocaleString('id-ID')}
+                    </strong>
+                  </div>
+                )}
+              </div>
+
+              {/* TOMBOL BAYAR TUNAI LANGSUNG MUNCULKAN STRUK */}
+              <div style={{ marginTop: '16px' }}>
+                <button
+                  type="button"
+                  className="btn-pay-now"
+                  style={{
+                    backgroundColor: !isCashSufficient ? '#9CA3AF' : '#193D2C',
+                    cursor: !isCashSufficient ? 'not-allowed' : 'pointer',
+                  }}
+                  disabled={isProcessing || !isCashSufficient}
+                  onClick={() => handleExecutePayment('cash')}
+                >
+                  {isProcessing
+                    ? 'Menyimpan Transaksi...'
+                    : !isCashSufficient
+                    ? 'Uang Diterima Kurang'
+                    : `Konfirmasi Pembayaran Tunai & Cetak Struk (Kembalian: Rp${kembalian.toLocaleString('id-ID')})`}
                 </button>
               </div>
             </div>
           )}
 
-          <div className="pos-actions-bottom">
+          {/* ================= AREA METODE PEMBAYARAN: EDC (KARTU) ================= */}
+          {paymentMethod === 'edc' && (
+            <div className="cash-payment-form" style={{ marginTop: '16px', background: '#F8FAFC', borderColor: '#CBD5E1' }}>
+              <div className="cash-form-title" style={{ color: '#1E293B' }}>
+                <span>💳</span> Pembayaran Mesin EDC (Kartu Debit / Kredit)
+              </div>
+
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  marginBottom: '14px',
+                  fontSize: '13px',
+                  color: '#475569',
+                  lineHeight: '1.5',
+                }}
+              >
+                Silakan gesek atau tap kartu pelanggan pada mesin EDC kasir (BCA / Mandiri / BRI).
+                Setelah struk dari mesin EDC keluar dengan status <strong>"APPROVED"</strong>, klik tombol di bawah untuk konfirmasi pembayaran dan mencetak struk resmi Warung Rahayu Jaya.
+              </div>
+
+              <button
+                type="button"
+                className="btn-pay-now"
+                style={{ backgroundColor: '#1E3A8A' }}
+                disabled={isProcessing}
+                onClick={() => handleExecutePayment('edc')}
+              >
+                {isProcessing
+                  ? 'Menyimpan Transaksi...'
+                  : `Konfirmasi Pembayaran EDC & Cetak Struk (Rp${totalAkhir.toLocaleString('id-ID')})`}
+              </button>
+            </div>
+          )}
+
+          {/* ================= AREA METODE PEMBAYARAN: QRIS MIDTRANS ================= */}
+          {paymentMethod === 'qris' && (
+            <div className="qris-display-box" style={{ marginTop: '16px' }}>
+              <div className="qris-box-header">
+                <span className="qris-badge-logo">QRIS</span>
+                <strong>Midtrans Dynamic Payment — Warung Rahayu Jaya</strong>
+              </div>
+
+              {/* Tampilan QR Code (Menampilkan link redirect resmi jika ada, atau petunjuk) */}
+              <div className="qris-qr-wrapper" style={{ margin: '14px auto' }}>
+                <QRCodeSVG
+                  value={
+                    redirectUrl ||
+                    `https://app.midtrans.com/payment?merchant=warungrahayujaya&order=${orderNumber}&amt=${totalAkhir}`
+                  }
+                  size={190}
+                  level="H"
+                  includeMargin={true}
+                />
+              </div>
+
+              <p className="qris-instructions" style={{ fontSize: '12px', color: '#4B5563', marginBottom: '14px' }}>
+                Mendukung pembayaran langsung via <strong>BCA Mobile, Livin Mandiri, BRImo, GoPay, OVO, DANA, ShopeePay</strong>, dan seluruh aplikasi perbankan berbasis QRIS.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* Tombol Buka Pop-up Snap Midtrans */}
+                <button
+                  type="button"
+                  className="btn-pay-now"
+                  style={{ backgroundColor: '#0284C7' }}
+                  disabled={isLoadingSnap || isProcessing}
+                  onClick={handleOpenMidtransQRIS}
+                >
+                  {isLoadingSnap
+                    ? 'Memuat Layar Midtrans...'
+                    : '📱 Buka Layar QRIS Midtrans (Snap Pop-Up)'}
+                </button>
+
+                {/* Tombol Konfirmasi Langsung Kasir */}
+                <button
+                  type="button"
+                  className="btn-pay-now"
+                  style={{ backgroundColor: '#16A34A' }}
+                  disabled={isProcessing}
+                  onClick={() => handleExecutePayment('qris')}
+                >
+                  {isProcessing
+                    ? 'Menyimpan Transaksi...'
+                    : `Pelanggan Sudah Scan & Berhasil (Cetak Struk)`}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Tombol Batalkan Keranjang */}
+          <div className="pos-actions-bottom" style={{ marginTop: '16px' }}>
             <button
               type="button"
               className="btn-clear-cart"
@@ -670,4 +803,3 @@ export default function CartSection({
     </section>
   );
 }
-
