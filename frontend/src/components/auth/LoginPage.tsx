@@ -19,7 +19,6 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }: LoginP
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string>('');
 
-  // Switch role tab
   const handleSelectRole = (role: 'KASIR' | 'ADMIN') => {
     setSelectedRole(role);
     setValidationError('');
@@ -32,12 +31,10 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }: LoginP
     }
   };
 
-  // Submit login form with Zod validation
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError('');
 
-    // ZOD VALIDATION FRONTEND
     const result = loginSchema.safeParse({
       username: username.trim(),
       password: password.trim(),
@@ -69,7 +66,6 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }: LoginP
   return (
     <div className="login-page-wrapper">
       <div className="login-card-container">
-        {/* Header Logo & Brand */}
         <div className="login-header">
           <div className="login-logo-circle">
             <img
@@ -85,7 +81,6 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }: LoginP
           <span className="login-branch-tag">📍 Cabang Villa Gading Harapan, Babelan</span>
         </div>
 
-        {/* Tab Pemilih Akses: POS vs ADMIN */}
         <div className="login-role-selector">
           <button
             type="button"
@@ -112,7 +107,6 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }: LoginP
           </button>
         </div>
 
-        {/* Notifikasi Error jika login salah atau gagal validasi Zod */}
         {displayError && (
           <div className="login-error-alert">
             <span>⚠️</span>
@@ -120,7 +114,6 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }: LoginP
           </div>
         )}
 
-        {/* Form Input Login */}
         <form onSubmit={handleSubmit} className="login-form">
           <div className="login-input-group">
             <label htmlFor="login-username">
@@ -175,7 +168,6 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }: LoginP
           </Button>
         </form>
 
-        {/* Pemisah atau Masuk Cepat (Quick Demo) */}
         <div className="login-divider">
           <span>ATAU MASUK CEPAT (DEMO)</span>
         </div>
@@ -208,7 +200,6 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }: LoginP
           </button>
         </div>
 
-        {/* Footer Keamanan */}
         <div className="login-footer-notice">
           <p>🔒 Sistem Terenkripsi & Terintegrasi Real-Time dengan Midtrans</p>
           <small>© 2026 Warung Rahayu Jaya. Hak Cipta Dilindungi.</small>
@@ -217,4 +208,3 @@ export default function LoginPage({ onLoginSuccess, targetView = 'pos' }: LoginP
     </div>
   );
 }
-

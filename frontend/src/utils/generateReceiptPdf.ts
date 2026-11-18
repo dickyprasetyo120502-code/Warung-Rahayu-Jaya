@@ -1,12 +1,11 @@
 import { jsPDF } from 'jspdf';
 import { OrderData } from '../schemas/order.schema';
 
-export function generateReceiptPdf(orderData: OrderData): void {
+export function buildReceiptDoc(orderData: OrderData): jsPDF {
   const {
     orderNumber,
     orderType,
     tableNumber,
-    guestCount,
     nama,
     telepon,
     catatan,
@@ -18,7 +17,6 @@ export function generateReceiptPdf(orderData: OrderData): void {
     date,
   } = orderData;
 
-  // Thermal receipt style dimensions (80mm width)
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -28,7 +26,6 @@ export function generateReceiptPdf(orderData: OrderData): void {
   const pageWidth = 80;
   let y = 10;
 
-  // Header
   doc.setFont('courier', 'bold');
   doc.setFontSize(13);
   doc.text('WARUNG RAHAYU JAYA', pageWidth / 2, y, { align: 'center' });
@@ -41,11 +38,9 @@ export function generateReceiptPdf(orderData: OrderData): void {
   doc.text('Babelan, Bekasi - WA: 0858-1015-2088', pageWidth / 2, y, { align: 'center' });
   y += 5;
 
-  // Divider
   doc.text('------------------------------------------', pageWidth / 2, y, { align: 'center' });
   y += 4;
 
-  // Order Info
   doc.setFontSize(8.5);
   doc.text(`No. Order  : ${orderNumber}`, 5, y);
   y += 4;
@@ -64,11 +59,9 @@ export function generateReceiptPdf(orderData: OrderData): void {
     y += 4;
   }
 
-  // Divider
   doc.text('------------------------------------------', pageWidth / 2, y, { align: 'center' });
   y += 4;
 
-  // Items
   doc.setFont('courier', 'bold');
   doc.text('ITEM', 5, y);
   doc.text('TOTAL', pageWidth - 5, y, { align: 'right' });
@@ -84,11 +77,9 @@ export function generateReceiptPdf(orderData: OrderData): void {
     y += 4.5;
   });
 
-  // Divider
   doc.text('------------------------------------------', pageWidth / 2, y, { align: 'center' });
   y += 4;
 
-  // Calculation
   doc.text('Subtotal', 5, y);
   doc.text(`Rp${subtotal.toLocaleString('id-ID')}`, pageWidth - 5, y, { align: 'right' });
   y += 4;
@@ -120,11 +111,9 @@ export function generateReceiptPdf(orderData: OrderData): void {
   doc.text('Status : LUNAS (PAID)', 5, y);
   y += 5;
 
-  // Divider
   doc.text('------------------------------------------', pageWidth / 2, y, { align: 'center' });
   y += 5;
 
-  // Footer
   doc.setFont('courier', 'normal');
   doc.setFontSize(7.5);
   doc.text('Terima kasih telah memesan di', pageWidth / 2, y, { align: 'center' });
@@ -133,7 +122,15 @@ export function generateReceiptPdf(orderData: OrderData): void {
   y += 3.5;
   doc.text('Simpan struk ini sebagai bukti pembayaran sah.', pageWidth / 2, y, { align: 'center' });
 
-  // Save / trigger download
-  doc.save(`Struk-${orderNumber}.pdf`);
+  return doc;
 }
 
+export function generateReceiptPdf(orderData: OrderData): void {
+  const doc = buildReceiptDoc(orderData);
+  doc.save(`Struk-${orderData.orderNumber}.pdf`);
+}
+
+export function generateReceiptPdfBlob(orderData: OrderData): Promise<Blob> {
+  const doc = buildReceiptDoc(orderData);
+  return Promise.resolve(doc.output('blob'));
+}

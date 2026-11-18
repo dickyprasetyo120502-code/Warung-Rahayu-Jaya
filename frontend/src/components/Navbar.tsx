@@ -9,7 +9,6 @@ interface NavbarProps {
 export default function Navbar({ authUser, onLogout }: NavbarProps) {
   return (
     <nav className="navbar">
-      {/* Logo dan Nama Warung */}
       <div className="logo">
         <img
           src="/images/favicon.jpg"
@@ -20,7 +19,6 @@ export default function Navbar({ authUser, onLogout }: NavbarProps) {
         <span>Warung Rahayu Jaya</span>
       </div>
 
-      {/* Navigasi, Profil Kasir & Tombol Keluar (Logout) */}
       <div className="navbar-actions">
         <ul>
           <li>
@@ -34,13 +32,11 @@ export default function Navbar({ authUser, onLogout }: NavbarProps) {
           </li>
         </ul>
 
-        {/* Profil Kasir Aktif (Tanpa nama individu) */}
         <div className="nav-user-profile" title="Petugas Kasir Aktif">
           <span>👤</span>
           <span>{authUser?.role === 'ADMIN' ? 'Admin' : 'Kasir'}</span>
         </div>
 
-        {/* Tombol Keluar kembali ke Halaman Login */}
         {onLogout && (
           <button
             type="button"
@@ -56,4 +52,3 @@ export default function Navbar({ authUser, onLogout }: NavbarProps) {
     </nav>
   );
 }
-

@@ -25,7 +25,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
   const [searchStock, setSearchStock] = useState<string>('');
   const [stockFilterType, setStockFilterType] = useState<'all' | 'low' | 'out'>('all');
 
-  // Listener sinkronisasi real-time antar tab / window
   useEffect(() => {
     const handleStockUpdate = () => {
       setStocks(getStocks());
@@ -47,7 +46,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
     };
   }, []);
 
-  // Update stok per item dengan Zod validation & Axios API call
   const handleUpdateStock = async (itemId: string, newStock: number) => {
     const valResult = updateStockSchema.safeParse({ stock: newStock });
     if (!valResult.success) {
@@ -82,7 +80,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
     }
   };
 
-  // Metrik Finansial
   const { totalPendapatan, totalTransaksi, aov, paymentStats, bestSellers } = useMemo(() => {
     let income = 0;
     const paymentCount = { qris: 0, cash: 0, edc: 0 };
@@ -139,7 +136,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
     };
   }, [transactions]);
 
-  // Flatten menu items untuk panel pengatur stok
   const allMenuItems = useMemo(() => {
     const list: (MenuItemData & { categoryTitle: string })[] = [];
     MENU_CATEGORIES.forEach((cat) => {
@@ -150,7 +146,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
     return list;
   }, []);
 
-  // Filter items di panel pengatur stok
   const filteredStockItems = useMemo(() => {
     return allMenuItems.filter((item) => {
       const stock = stocks[item.id] !== undefined ? stocks[item.id] : 0;
@@ -182,7 +177,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
 
   return (
     <div className="laptop-admin-wrapper">
-      {/* ================= TOP BAR LAPTOP ================= */}
       <header className="laptop-admin-topbar">
         <div className="topbar-left">
           <div className="brand-badge">
@@ -231,7 +225,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
         </div>
       </header>
 
-      {/* ================= TAB NAVIGASI UTAMA ADMIN (DASHBOARD VS LAPORAN KEUANGAN) ================= */}
       <div className="admin-nav-tabs-wrapper">
         <div className="admin-nav-tabs-container">
           <button
@@ -250,12 +243,11 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
           >
             <span className="tab-icon">📑</span>
             <span>Laporan Laba Bersih (Financial F&B)</span>
-            <span className="badge-tab-new">Resmi</span>
+         
           </button>
         </div>
       </div>
 
-      {/* ================= KONDISI TAMPILAN: LAPORAN LABA BERSIH ================= */}
       {adminTab === 'laporan' ? (
         <ProfitReport
           transactions={transactions}
@@ -263,7 +255,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
           totalPendapatanHariIni={totalPendapatan}
         />
       ) : (
-        /* ================= KONDISI TAMPILAN: DASHBOARD OPERASIONAL & STOK ================= */
         <div className="laptop-admin-content">
           <div className="laptop-welcome-banner">
             <div className="welcome-info">
@@ -279,7 +270,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
             </div>
           </div>
 
-          {/* 4 Kartu Metrik Utama */}
           <div className="laptop-metrics-grid">
             <div className="metric-card-laptop primary-green">
               <div className="metric-header">
@@ -338,9 +328,7 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
             </div>
           </div>
 
-          {/* ================= LAYOUT 2 KOLOM BESAR LAPTOP ================= */}
           <div className="laptop-main-grid">
-            {/* KOLOM KIRI: FITUR PENGATUR STOK */}
             <div className="laptop-column-left">
               <div className="stock-manager-card">
                 <div className="stock-card-header">
@@ -355,7 +343,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
                   </div>
                 </div>
 
-                {/* Filter & Pencarian Stok */}
                 <div className="stock-controls-bar">
                   <div className="search-input-wrapper">
                     <span className="search-icon">🔍</span>
@@ -412,7 +399,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
                   </div>
                 </div>
 
-                {/* Tabel Pengatur Stok Laptop */}
                 <div className="stock-table-container">
                   <table className="stock-table">
                     <thead>
@@ -537,9 +523,7 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
               </div>
             </div>
 
-            {/* KOLOM KANAN: KANAL PEMBAYARAN, MENU TERLARIS & LOG TRANSAKSI */}
             <div className="laptop-column-right">
-              {/* Distribusi Kanal Pembayaran */}
               <div className="admin-side-card">
                 <div className="side-card-header">
                   <h3>Metode Pembayaran (Hari Ini)</h3>
@@ -583,7 +567,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
                 </div>
               </div>
 
-              {/* Menu Terlaris */}
               <div className="admin-side-card">
                 <div className="side-card-header">
                   <h3>Menu Terlaris (Hari Ini)</h3>
@@ -619,7 +602,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
                 </div>
               </div>
 
-              {/* Transaksi Terkini */}
               <div className="admin-side-card">
                 <div className="side-card-header">
                   <h3>Transaksi Terkini (Feed Kasir)</h3>
@@ -668,7 +650,6 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
         </div>
       )}
 
-      {/* Navigasi Mobile Bawah untuk HP */}
       <nav className="admin-mobile-bottom-nav">
         <button
           type="button"

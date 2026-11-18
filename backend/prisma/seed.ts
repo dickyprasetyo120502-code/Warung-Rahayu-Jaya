@@ -4,13 +4,9 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 [Prisma Seed] Memulai seeding database Warung Rahayu Jaya (PostgreSQL Local)...');
-
-  // 1. Password Hashing dengan bcrypt (Salt rounds: 10)
   const hashedAdminPassword = await bcrypt.hash('admin123', 10);
   const hashedKasirPassword = await bcrypt.hash('kasir123', 10);
 
-  // 2. Seed Users (Admin & Kasir)
   const users = [
     {
       username: 'admin',
@@ -37,9 +33,7 @@ async function main() {
       create: u,
     });
   }
-  console.log('✅ Users (admin: admin123, kasir: kasir123) berhasil di-seed dengan bcrypt hash.');
 
-  // 3. Seed Categories
   const categories = [
     { id: 'ayam', title: '🍗 Menu Ayam' },
     { id: 'ikan', title: '🐟 Menu Ikan' },
@@ -53,11 +47,8 @@ async function main() {
       create: cat,
     });
   }
-  console.log('✅ Kategori menu berhasil di-seed.');
 
-  // 4. Seed Menu Items & Initial Stocks
   const menuItems = [
-    // Menu Ayam
     {
       id: 'ayam-goreng',
       nama: 'Ayam Goreng',
@@ -94,7 +85,6 @@ async function main() {
       stock: 5,
       categoryId: 'ayam',
     },
-    // Menu Ikan
     {
       id: 'nila-goreng',
       nama: 'Ikan Nila Goreng',
@@ -131,7 +121,6 @@ async function main() {
       stock: 15,
       categoryId: 'ikan',
     },
-    // Menu Tambahan
     {
       id: 'soto',
       nama: 'Soto',
@@ -193,15 +182,14 @@ async function main() {
     });
   }
 
-  console.log('✅ 13 Menu items & stok awal berhasil dimasukkan ke PostgreSQL.');
+  console.log('Seeding selesai.');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error saat seeding:', e);
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
   });
-

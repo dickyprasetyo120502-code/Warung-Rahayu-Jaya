@@ -29,16 +29,9 @@ const createOrderSchema = z.object({
   paymentMethod: z.enum(['qris', 'cash', 'edc']),
 });
 
-// Endpoint untuk mendapatkan Snap Token Midtrans QRIS dinamis
 router.post('/snap-token', createSnapToken);
-
-// Webhook Notifikasi Midtrans (Opsional untuk Ngrok / Server Publik)
 router.post('/notification', handleMidtransNotification);
-
-// Kasir dan publik dapat membuat order
 router.post('/', validateBody(createOrderSchema), createOrder);
-
-// Melihat riwayat pesanan (Admin & Kasir)
 router.get('/', verifyToken, requireKasirOrAdmin, getOrders);
 
 export default router;

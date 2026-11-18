@@ -1,23 +1,15 @@
-import React from 'react';
-import { generateReceiptPdf } from '../utils/generateReceiptPdf';
+import React, { useState } from 'react';
 import { OrderData } from '../schemas/order.schema';
+import { generateReceiptPdfBlob } from '../utils/generateReceiptPdf';
 
 interface ReceiptModalProps {
   orderData: OrderData | null;
   onClose: () => void;
 }
 
-function formatWhatsAppNumber(phone?: string | null): string {
-  let cleaned = (phone || '').replace(/[^0-9]/g, '');
-  if (cleaned.startsWith('0')) {
-    cleaned = '62' + cleaned.slice(1);
-  } else if (!cleaned.startsWith('62')) {
-    cleaned = '62' + cleaned;
-  }
-  return cleaned;
-}
-
 export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) {
+  const [waNotice, setWaNotice] = useState<string>('');
+
   if (!orderData) return null;
 
   const {
@@ -36,45 +28,43 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
     date,
   } = orderData;
 
-  const handleDownloadPdf = () => {
-    generateReceiptPdf(orderData);
+  const handleDownloadPdf = async () => {
+    try {
+      const blob = await generateReceiptPdfBlob(orderData);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Struk-${orderNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error(err);
+      alert('Gagal membuat file PDF struk.');
+    }
   };
 
   const handleSendWA = () => {
-    const targetPhone = formatWhatsAppNumber(telepon);
+    const rawPhone = telepon ? telepon.replace(/[^0-9]/g, '') : '';
+    let phoneParam = rawPhone;
 
-    let pesan = `*STRUK PEMBAYARAN RESMI - WARUNG RAHAYU JAYA*%0A`;
-    pesan += `━━━━━━━━━━━━━━━━━━━━━%0A`;
-    pesan += `📋 *No. Pesanan* : *${orderNumber}*%0A`;
-    pesan += `📅 *Waktu* : ${date}%0A`;
-    pesan += `🍽️ *Layanan* : ${
-      orderType === 'dine-in'
-        ? `Dine-In (Meja ${tableNumber} • ${guestCount} Tamu)`
-        : 'Take Away (Bungkus)'
-    }%0A`;
-    pesan += `👤 *Customer* : ${nama}%0A`;
-    pesan += `📞 *No. WA* : ${telepon}%0A`;
-    if (catatan) {
-      pesan += `📝 *Catatan* : ${catatan}%0A`;
+    if (phoneParam.startsWith('0')) {
+      phoneParam = '62' + phoneParam.slice(1);
     }
-    pesan += `━━━━━━━━━━━━━━━━━━━━━%0A`;
-    pesan += `*DETAIL MENU PESANAN:*%0A`;
 
-    cartItems.forEach((item) => {
-      const itemTotal = item.harga * item.qty;
-      pesan += `• ${item.nama} x${item.qty} = Rp${itemTotal.toLocaleString('id-ID')}%0A`;
-    });
+    const itemsSummary = cartItems
+      .map((it) => `• ${it.nama} (${it.qty}x) = Rp${(it.harga * it.qty).toLocaleString('id-ID')}`)
+      .join('\n');
 
-    pesan += `━━━━━━━━━━━━━━━━━━━━━%0A`;
-    pesan += `Subtotal : Rp${subtotal.toLocaleString('id-ID')}%0A`;
-    pesan += `PB1 (Pajak 10%) : Rp${tax.toLocaleString('id-ID')}%0A`;
-    pesan += `*TOTAL AKHIR : Rp${total.toLocaleString('id-ID')}*%0A`;
-    pesan += `*Metode Bayar* : ${paymentMethod.toUpperCase()} (LUNAS)%0A`;
-    pesan += `━━━━━━━━━━━━━━━━━━━━━%0A`;
-    pesan += `_Terima kasih telah bersantap di Warung Rahayu Jaya! Semoga berkah dan sehat selalu._`;
+    const pesan = `Halo kak ${nama || 'Pelanggan'},\nBerikut struk pembelian resmi Anda di *Warung Rahayu Jaya*:\n\n*No. Pesanan:* ${orderNumber}\n*Waktu:* ${date}\n*Layanan:* ${orderType === 'dine-in' ? `Dine-In (Meja ${tableNumber})` : 'Take Away'}\n\n*Rincian Menu:*\n${itemsSummary}\n\n*Subtotal:* Rp${subtotal.toLocaleString('id-ID')}\n*PB1 (10%):* Rp${tax.toLocaleString('id-ID')}\n*Total Tagihan:* Rp${total.toLocaleString('id-ID')}\n*Metode:* ${paymentMethod.toUpperCase()} (LUNAS)\n\nTerima kasih atas kunjungan Anda di Warung Rahayu Jaya!`;
 
-    const waUrl = `https://wa.me/${targetPhone}?text=${pesan}`;
+    const waUrl = phoneParam
+      ? `https://wa.me/${phoneParam}?text=${encodeURIComponent(pesan)}`
+      : `https://wa.me/?text=${encodeURIComponent(pesan)}`;
+
     window.open(waUrl, '_blank');
+    setWaNotice('WhatsApp dibuka. Anda dapat mengunggah file PDF struk jika diperlukan.');
   };
 
   const handlePrintThermal = () => {
@@ -84,7 +74,6 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
   return (
     <div className="receipt-overlay" onClick={onClose}>
       <div className="receipt-modal-card" onClick={(e) => e.stopPropagation()}>
-        {/* Tombol Tutup Silang */}
         <button
           type="button"
           className="receipt-btn-close"
@@ -94,7 +83,6 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
           ✕
         </button>
 
-        {/* Header Struk Nota Kasir */}
         <div className="receipt-header">
           <img
             src="/images/favicon.jpg"
@@ -129,10 +117,8 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
           </small>
         </div>
 
-        {/* Garis Gerigi / Separator Nota */}
         <div className="receipt-divider-dashed"></div>
 
-        {/* Info Meja & Nomor Pesanan */}
         <div className="receipt-meta-grid">
           <div className="receipt-meta-item">
             <span className="meta-label">No. Pesanan</span>
@@ -168,10 +154,8 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
           </div>
         )}
 
-        {/* Garis Separator */}
         <div className="receipt-divider-dashed"></div>
 
-        {/* Daftar Menu Pesanan */}
         <div className="receipt-items-list">
           <div className="receipt-items-header">
             <span>Menu</span>
@@ -193,10 +177,8 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
           ))}
         </div>
 
-        {/* Garis Separator */}
         <div className="receipt-divider-dashed"></div>
 
-        {/* Ringkasan Total & Pajak */}
         <div className="receipt-totals-box">
           <div className="totals-row">
             <span>Subtotal</span>
@@ -253,7 +235,6 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
           <small>Struk ini merupakan bukti pembayaran resmi yang sah.</small>
         </div>
 
-        {/* Aksi Struk: Cetak PDF, Kirim WA, Print Nota */}
         <div className="receipt-action-buttons">
           <button
             type="button"
@@ -310,4 +291,3 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
     </div>
   );
 }
-

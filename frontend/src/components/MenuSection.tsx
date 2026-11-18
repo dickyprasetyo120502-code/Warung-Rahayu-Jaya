@@ -27,7 +27,6 @@ export default function MenuSection({
 }: MenuSectionProps) {
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
-  // Filter items in each category
   const filteredCategories = categories
     .map((cat) => {
       const matchingItems = cat.items.filter((item) => {
@@ -43,7 +42,6 @@ export default function MenuSection({
 
   return (
     <>
-      {/* Switch Tipe Pesanan: Dine-In vs Take Away */}
       <div className="order-type-container">
         <div className="order-type-switch">
           <button

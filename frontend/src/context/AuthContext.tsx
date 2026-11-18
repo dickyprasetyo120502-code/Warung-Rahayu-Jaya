@@ -21,7 +21,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync auth state across browser tabs
   useEffect(() => {
     const handleStorageChange = () => {
       setUser(getAuthUser());
@@ -41,7 +40,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
 
     try {
-      // 1. Coba panggil Backend REST API dengan Axios
       const res = await api.post('/auth/login', input);
       if (res.data && res.data.success) {
         const { user: apiUser, token: apiToken } = res.data;
@@ -57,7 +55,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.warn('Backend API tidak merespons, beralih ke otentikasi lokal terintegrasi:', err.message);
     }
 
-    // 2. Fallback ke sistem otentikasi lokal
     const localRes = localLoginUser(input.role.toLowerCase() as 'admin' | 'kasir', input.username, input.password);
     setIsLoading(false);
 
@@ -101,7 +98,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
     } catch {
-      // fallback
     }
 
     const localUser = localQuickLogin(role.toLowerCase() as 'admin' | 'kasir');
@@ -152,4 +148,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-

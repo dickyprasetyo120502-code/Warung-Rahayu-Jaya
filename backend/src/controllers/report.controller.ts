@@ -3,7 +3,7 @@ import prisma from '../config/prisma';
 
 export const getProfitReport = async (req: Request, res: Response) => {
   try {
-    const { period } = req.query; // 'hari' | 'minggu' | 'bulan' | 'kustom'
+    const { period } = req.query;
 
     const now = new Date();
     let startDate: Date | undefined;
@@ -75,7 +75,6 @@ export const getProfitReport = async (req: Request, res: Response) => {
     const discount = 0;
     const netSales = grossSales - discount;
 
-    // Beban Operasional Proporsional Standar F&B
     const hppBahan = Math.round(netSales * 0.42);
     const gajiKaryawan = Math.round(netSales * 0.16);
     const listrikAir = Math.round(netSales * 0.05);

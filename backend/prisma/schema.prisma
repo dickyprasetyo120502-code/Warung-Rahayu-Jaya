@@ -1,5 +1,3 @@
-// Schema Prisma untuk Warung Rahayu Jaya
-// Menggunakan PostgreSQL & terhubung dengan DBeaver
 
 generator client {
   provider = "prisma-client-js"
@@ -10,12 +8,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 1. Model Pengguna (Admin & Kasir)
 model User {
   id        Int      @id @default(autoincrement())
   username  String   @unique
-  password  String   // Plain text untuk demo atau bcrypt hash
-  role      String   @default("KASIR") // "ADMIN" atau "KASIR"
+  password  String   
+  role      String   @default("KASIR")
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -23,9 +20,8 @@ model User {
   @@map("users")
 }
 
-// 2. Kategori Menu (Makanan, Minuman, Paket Hemat)
 model Category {
-  id        String     @id // e.g. "makanan", "minuman", "paket"
+  id        String     @id 
   title     String
   items     MenuItem[]
   createdAt DateTime   @default(now())
@@ -33,14 +29,13 @@ model Category {
   @@map("categories")
 }
 
-// 3. Item Menu & Stok Real-Time
 model MenuItem {
-  id          String      @id // e.g. "ayam-goreng", "ayam-bakar"
+  id          String      @id 
   nama        String
   harga       Int
   deskripsi   String?
   gambar      String?
-  stock       Int         @default(20) // Stok bahan / porsi di dapur
+  stock       Int         @default(20)
   categoryId  String
   category    Category    @relation(fields: [categoryId], references: [id])
   orderItems  OrderItem[]
@@ -50,21 +45,20 @@ model MenuItem {
   @@map("menu_items")
 }
 
-// 4. Data Pesanan / Transaksi Kasir
 model Order {
   id            Int         @id @default(autoincrement())
-  orderNumber   String      @unique // e.g. "WRJ-001", "WRJ-002"
-  orderType     String      @default("dine-in") // "dine-in" atau "take-away"
-  tableNumber   String?     // null jika take-away
+  orderNumber   String      @unique 
+  orderType     String      @default("dine-in") 
+  tableNumber   String?   
   guestCount    String?
-  nama          String      // Nama pemesan
-  telepon       String?     // Nomor WhatsApp customer untuk kirim PDF nota
+  nama          String     
+  telepon       String?     
   catatan       String?
   subtotal      Int
-  tax           Int         // PB1 10%
-  total         Int         // Total Akhir
-  paymentMethod String      @default("qris") // "qris", "cash", "edc"
-  paymentStatus String      @default("PAID") // "PENDING", "PAID", "CANCELLED"
+  tax           Int         
+  total         Int        
+  paymentMethod String      @default("qris") 
+  paymentStatus String      @default("PAID") 
   kasirName     String?     @default("Kasir")
   items         OrderItem[]
   createdAt     DateTime    @default(now())
@@ -73,7 +67,6 @@ model Order {
   @@map("orders")
 }
 
-// 5. Rincian Item di dalam Pesanan
 model OrderItem {
   id         Int      @id @default(autoincrement())
   orderId    Int

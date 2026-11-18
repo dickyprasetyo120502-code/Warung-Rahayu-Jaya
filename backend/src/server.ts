@@ -11,7 +11,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
 app.use(
   cors({
     origin: '*',
@@ -21,7 +20,6 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Welcome & Health Check Routes
 app.get('/', (_req: Request, res: Response) => {
   res.json({
     success: true,
@@ -31,18 +29,18 @@ app.get('/', (_req: Request, res: Response) => {
       health: 'GET /api/health',
       auth: {
         login: 'POST /api/auth/login',
-        profile: 'GET /api/auth/me (Membutuhkan Bearer Token)',
+        profile: 'GET /api/auth/me',
       },
       menu: {
         getAll: 'GET /api/menu',
-        updateStock: 'PUT /api/menu/:id/stock (Admin Only)',
+        updateStock: 'PUT /api/menu/:id/stock',
       },
       orders: {
         create: 'POST /api/orders',
-        getAll: 'GET /api/orders (Kasir/Admin)',
+        getAll: 'GET /api/orders',
       },
       reports: {
-        profit: 'GET /api/reports/profit (Admin Only)',
+        profit: 'GET /api/reports/profit',
       },
     },
   });
@@ -62,13 +60,11 @@ app.get('/api/health', (_req: Request, res: Response) => {
   });
 });
 
-// REST API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/reports', reportRoutes);
 
-// 404 Route Not Found
 app.use((_req: Request, res: Response) => {
   res.status(404).json({
     success: false,
@@ -76,9 +72,8 @@ app.use((_req: Request, res: Response) => {
   });
 });
 
-// Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('Unhandled Server Error:', err);
+  console.error(err);
   res.status(500).json({
     success: false,
     message: 'Terjadi kesalahan internal pada server backend.',
@@ -87,9 +82,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 [Server Backend] Warung Rahayu Jaya berjalan di http://localhost:${PORT}`);
-  console.log(`📦 [Database] Terhubung ke PostgreSQL Local via Prisma ORM`);
+  console.log(`Server berjalan di http://localhost:${PORT}`);
 });
 
 export default app;
-

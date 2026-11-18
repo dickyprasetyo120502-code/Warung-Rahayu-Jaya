@@ -20,7 +20,6 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [cart, setCart] = useState<Record<string, number>>({});
   const [orderType, setOrderType] = useState<'dine-in' | 'take-away'>('dine-in');
 
-  // Lookup map menu
   const allItemsMap = useMemo(() => {
     const map = new Map<string, any>();
     MENU_CATEGORIES.forEach((category) => {

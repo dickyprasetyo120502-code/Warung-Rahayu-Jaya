@@ -1,5 +1,3 @@
-// Utilitas Otentikasi & Sesi Login Warung Rahayu Jaya
-// Mendukung login Kasir POS dan Admin
 import { AuthUser } from '../schemas/auth.schema';
 
 const AUTH_STORAGE_KEY = 'wrj_auth_user';
@@ -21,7 +19,6 @@ export const DEFAULT_ACCOUNTS = {
   },
 };
 
-// Ambil sesi user yang sedang aktif
 export const getAuthUser = (): AuthUser | null => {
   try {
     const raw = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -32,7 +29,6 @@ export const getAuthUser = (): AuthUser | null => {
   }
 };
 
-// Simpan sesi login
 export const setAuthUser = (user: AuthUser | null): void => {
   try {
     if (!user) {
@@ -46,7 +42,6 @@ export const setAuthUser = (user: AuthUser | null): void => {
   }
 };
 
-// Proses Login dengan Validasi
 export const loginUser = (
   role: 'admin' | 'kasir' | 'ADMIN' | 'KASIR',
   username: string,
@@ -56,7 +51,6 @@ export const loginUser = (
   const cleanUser = (username || '').trim().toLowerCase();
   const cleanPass = (password || '').trim();
 
-  // Validasi khusus admin
   if (cleanRole === 'ADMIN') {
     if (
       cleanUser === 'admin' &&
@@ -76,7 +70,6 @@ export const loginUser = (
     };
   }
 
-  // Validasi khusus kasir
   if (cleanRole === 'KASIR') {
     if (
       cleanUser === 'kasir' &&
@@ -99,7 +92,6 @@ export const loginUser = (
   return { success: false, message: 'Role tidak dikenali.' };
 };
 
-// Quick Login (Demo Instant)
 export const quickLogin = (role: 'admin' | 'kasir' | 'ADMIN' | 'KASIR'): AuthUser => {
   const cleanRole = role.toUpperCase();
   const account = cleanRole === 'ADMIN' ? DEFAULT_ACCOUNTS.admin : DEFAULT_ACCOUNTS.kasir;
@@ -112,7 +104,6 @@ export const quickLogin = (role: 'admin' | 'kasir' | 'ADMIN' | 'KASIR'): AuthUse
   return user;
 };
 
-// Logout / Keluar Sesi
 export const logoutUser = (): void => {
   try {
     localStorage.removeItem(AUTH_STORAGE_KEY);
@@ -121,4 +112,3 @@ export const logoutUser = (): void => {
     console.error('Gagal menghapus sesi login:', err);
   }
 };
-

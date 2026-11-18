@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
 
-// Ambil seluruh menu & kategori beserta stok real-time
 export const getMenu = async (_req: Request, res: Response) => {
   try {
     const categories = await prisma.category.findMany({
@@ -18,7 +17,7 @@ export const getMenu = async (_req: Request, res: Response) => {
       categories,
     });
   } catch (error: any) {
-    console.error('Error getMenu:', error);
+    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Gagal mengambil data menu dari database.',
@@ -26,7 +25,6 @@ export const getMenu = async (_req: Request, res: Response) => {
   }
 };
 
-// Update stok item menu dari Admin
 export const updateStock = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -51,11 +49,10 @@ export const updateStock = async (req: Request, res: Response) => {
       item: updated,
     });
   } catch (error: any) {
-    console.error('Error updateStock:', error);
+    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Gagal mengupdate stok menu.',
     });
   }
 };
-

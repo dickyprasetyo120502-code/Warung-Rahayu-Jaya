@@ -28,7 +28,6 @@ export default function MenuCard({ item, qty, onTambah, onKurang, stock = 99 }: 
       <p className="card-price">Rp{item.harga.toLocaleString('id-ID')}</p>
       <p className="desc">{item.deskripsi}</p>
 
-      {/* Stock status info */}
       <div className="card-stock-status">
         {isOutOfStock ? (
           <span className="stock-text-out">Habis di Dapur</span>

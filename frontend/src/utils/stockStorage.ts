@@ -3,7 +3,6 @@ import { OrderData } from '../schemas/order.schema';
 const STOCK_STORAGE_KEY = 'wrj_menu_stocks';
 const TRANSACTIONS_KEY = 'wrj_sales_transactions';
 
-// Stok awal realistis (bisa diubah-ubah bebas oleh Admin kapan saja)
 export const INITIAL_STOCKS: Record<string, number> = {
   'ayam-goreng': 6,
   'ayam-bakar': 10,
@@ -20,7 +19,6 @@ export const INITIAL_STOCKS: Record<string, number> = {
   'nasi-putih': 30,
 };
 
-// Ambil stok saat ini
 export function getStocks(): Record<string, number> {
   try {
     const data = localStorage.getItem(STOCK_STORAGE_KEY);
@@ -33,7 +31,6 @@ export function getStocks(): Record<string, number> {
   return { ...INITIAL_STOCKS };
 }
 
-// Update stok untuk 1 item (langsung emit event agar POS & Admin ter-update)
 export function updateStock(itemId: string, newStock: number | string): Record<string, number> {
   const current = getStocks();
   current[itemId] = Math.max(0, parseInt(String(newStock), 10) || 0);
@@ -42,13 +39,11 @@ export function updateStock(itemId: string, newStock: number | string): Record<s
   return current;
 }
 
-// Update seluruh stok sekaligus
 export function setAllStocks(stocksObj: Record<string, number>): void {
   localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(stocksObj));
   window.dispatchEvent(new Event('wrj_stock_updated'));
 }
 
-// Kurangi stok saat ada pembelian selesai di POS
 export function deductStock(cartItems: Array<{ id?: string; qty?: number }>): Record<string, number> {
   const current = getStocks();
   cartItems.forEach((item) => {
@@ -61,8 +56,6 @@ export function deductStock(cartItems: Array<{ id?: string; qty?: number }>): Re
   return current;
 }
 
-// ================= TRANSAKSI PENJUALAN (MULAI DARI 0) =================
-
 export function getTransactions(): any[] {
   try {
     const data = localStorage.getItem(TRANSACTIONS_KEY);
@@ -72,7 +65,7 @@ export function getTransactions(): any[] {
   } catch (e) {
     console.error('Failed to read transactions', e);
   }
-  return []; // Dimulai dari 0 / kosong
+  return [];
 }
 
 export function recordTransaction(orderData: any): any[] {
@@ -95,7 +88,6 @@ export function recordTransaction(orderData: any): any[] {
   return updated;
 }
 
-// Fungsi reset data transaksi untuk Admin jika ingin mulai dari 0 kembali
 export function clearAllTransactions(): any[] {
   localStorage.removeItem(TRANSACTIONS_KEY);
   window.dispatchEvent(new Event('wrj_transactions_updated'));

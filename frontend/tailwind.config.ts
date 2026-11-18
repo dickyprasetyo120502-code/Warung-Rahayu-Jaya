@@ -1,4 +1,5 @@
-/** @type {import('tailwindcss').Config} */
+import type { Config } from 'tailwindcss';
+
 export default {
   darkMode: ['class'],
   content: [
@@ -48,17 +49,6 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // Warung Rahayu Jaya Brand Palettes
-        brand: {
-          emerald: '#193D2C',
-          dark: '#143325',
-          darker: '#0C2016',
-          sage: '#E8F0EC',
-          light: '#F4F6F4',
-          gold: '#D97706',
-          goldHover: '#F59E0B',
-          goldLight: '#FEF3C7',
-        },
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -68,5 +58,4 @@ export default {
     },
   },
   plugins: [],
-};
-
+} satisfies Config;

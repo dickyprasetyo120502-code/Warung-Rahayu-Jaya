@@ -19,7 +19,6 @@ export default function App() {
   const { user, logout } = useAuth();
   const { cart, addItem, removeItem, resetCart, cartItems, totalQty, grandTotal, orderType, setOrderType } = useCart();
 
-  // URL path detection
   const [currentView, setCurrentView] = useState<'admin' | 'pos'>(() => {
     return window.location.pathname.startsWith('/admin') ? 'admin' : 'pos';
   });
@@ -28,7 +27,6 @@ export default function App() {
   const [receiptData, setReceiptData] = useState<OrderData | null>(null);
   const [stocks, setStocks] = useState<Record<string, number>>(getStocks());
 
-  // Listen to popstate (back/forward browser button)
   useEffect(() => {
     const handlePopState = () => {
       setCurrentView(window.location.pathname.startsWith('/admin') ? 'admin' : 'pos');
@@ -37,7 +35,6 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Listen to stock updates in real-time
   useEffect(() => {
     const handleStockUpdate = () => {
       setStocks(getStocks());
@@ -63,13 +60,12 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    if (window.confirm('Apakah Anda yakin ingin keluar (logout) ke Halaman Login?')) {
+    if (window.confirm('Apakah Anda yakin ingin keluar (logout)?')) {
       logout();
       navigateTo('pos');
     }
   };
 
-  // ================= 1. JIKA BELUM LOGIN: TAMPILKAN HALAMAN LOGIN =================
   if (!user) {
     return (
       <LoginPage
@@ -79,7 +75,6 @@ export default function App() {
     );
   }
 
-  // ================= 2. JIKA DI ADMIN TAPI BUKAN ROLE ADMIN =================
   if (currentView === 'admin' && user.role !== 'ADMIN') {
     return (
       <LoginPage
@@ -89,7 +84,6 @@ export default function App() {
     );
   }
 
-  // ================= 3. JIKA LOGIN SEBAGAI ADMIN: HANYA AKSES ADMIN =================
   if (user.role === 'ADMIN') {
     return (
       <AdminDashboard
@@ -99,7 +93,6 @@ export default function App() {
     );
   }
 
-  // ================= 4. JIKA LOGIN SEBAGAI KASIR: HANYA AKSES POS =================
   return (
     <>
       <Navbar
@@ -141,7 +134,6 @@ export default function App() {
       <FloatingCart totalQty={totalQty} grandTotal={grandTotal} />
       <Footer />
 
-      {/* Modal Struk Transaksi Resmi */}
       <ReceiptModal
         orderData={receiptData}
         onClose={() => {
@@ -153,4 +145,3 @@ export default function App() {
     </>
   );
 }
-

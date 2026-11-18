@@ -16,7 +16,6 @@ export default function ProfitReport({
   const [period, setPeriod] = useState<'hari' | 'minggu' | 'bulan' | 'kustom'>('bulan');
   const [showAllClosing, setShowAllClosing] = useState<boolean>(false);
 
-  // Waktu & Tanggal Real-Time Lengkap
   const now = new Date();
   const fullDateStr = now.toLocaleDateString('id-ID', {
     weekday: 'long',
@@ -36,7 +35,6 @@ export default function ProfitReport({
     year: 'numeric',
   });
 
-  // Filter transaksi berdasarkan periode aktif
   const filteredTransactions = useMemo(() => {
     if (!transactions || transactions.length === 0) return [];
 
@@ -57,7 +55,6 @@ export default function ProfitReport({
     });
   }, [transactions, period]);
 
-  // Kalkulasi Finansial Dinamis
   const financialStats = useMemo(() => {
     const txList = filteredTransactions;
     const txCount = txList.length;
@@ -195,7 +192,6 @@ export default function ProfitReport({
     }));
   }, [transactions, now]);
 
-  // Cetak PDF Laporan Keuangan Lengkap
   const handlePrintPdf = () => {
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -433,7 +429,6 @@ export default function ProfitReport({
 
   return (
     <div className="profit-report-container">
-      {/* ================= HEADER LAPORAN RESMI ================= */}
       <div className="report-top-header">
         <div className="report-title-area">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
@@ -452,7 +447,7 @@ export default function ProfitReport({
           </div>
           <div className="report-title-row">
             <h1>Ringkasan Laba Bersih</h1>
-            <span className="badge-verified">✓ Terhubung POS & Stok</span>
+            
           </div>
           <p className="report-timestamp-meta">
             📅 {fullDateStr} • Pukul {fullTimeStr}
@@ -482,7 +477,6 @@ export default function ProfitReport({
         </div>
       </div>
 
-      {/* FILTER PERIODE WAKTU */}
       <div className="period-filter-nav">
         <button
           type="button"
@@ -514,7 +508,6 @@ export default function ProfitReport({
         </button>
       </div>
 
-      {/* ================= CARD UTAMA: HASIL AKHIR BERSIH ================= */}
       <div className="hero-profit-card">
         <div className="profit-card-top">
           <div className="profit-badge-margin">
@@ -539,7 +532,6 @@ export default function ProfitReport({
         </div>
       </div>
 
-      {/* ================= 2-KOLOM LAPTOP / 1-KOLOM HP ================= */}
       <div className="report-grid-layout">
         <div className="report-col">
           <div className="report-card-section">

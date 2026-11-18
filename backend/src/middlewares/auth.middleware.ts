@@ -14,7 +14,6 @@ export interface AuthenticatedRequest extends Request {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'warung_rahayu_jaya_jwt_secret_super_secure_key_2026';
 
-// Middleware verifikasi JWT
 export const verifyToken = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
@@ -39,7 +38,6 @@ export const verifyToken = (req: AuthenticatedRequest, res: Response, next: Next
   }
 };
 
-// Middleware proteksi khusus Admin
 export const requireAdmin = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   if (!req.user || req.user.role !== 'ADMIN') {
     return res.status(403).json({
@@ -50,7 +48,6 @@ export const requireAdmin = (req: AuthenticatedRequest, res: Response, next: Nex
   next();
 };
 
-// Middleware proteksi Kasir / Admin
 export const requireKasirOrAdmin = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   if (!req.user || (req.user.role !== 'KASIR' && req.user.role !== 'ADMIN')) {
     return res.status(403).json({
@@ -60,4 +57,3 @@ export const requireKasirOrAdmin = (req: AuthenticatedRequest, res: Response, ne
   }
   next();
 };
-

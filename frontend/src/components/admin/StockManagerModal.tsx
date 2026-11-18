@@ -11,7 +11,6 @@ export default function StockManagerModal({ stocks, onUpdateStock, onClose }: St
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filter, setFilter] = useState<'all' | 'low' | 'out'>('all');
 
-  // Flatten all menu items
   const allItems: { id: string; nama: string; harga: number; deskripsi?: string; gambar?: string; kategori: string }[] = [];
   MENU_CATEGORIES.forEach((cat) => {
     cat.items.forEach((item) => {
@@ -45,7 +44,6 @@ export default function StockManagerModal({ stocks, onUpdateStock, onClose }: St
           </button>
         </div>
 
-        {/* Search & Filter Pills */}
         <div className="stock-modal-toolbar">
           <input
             type="text"
@@ -80,7 +78,6 @@ export default function StockManagerModal({ stocks, onUpdateStock, onClose }: St
           </div>
         </div>
 
-        {/* Table of Items */}
         <div className="stock-modal-table-wrap">
           <table className="stock-modal-table">
             <thead>

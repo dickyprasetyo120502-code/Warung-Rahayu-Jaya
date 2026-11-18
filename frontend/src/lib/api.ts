@@ -8,7 +8,6 @@ const api = axios.create({
   timeout: 8000,
 });
 
-// Request interceptor untuk menyematkan JWT Token
 api.interceptors.request.use(
   (config) => {
     try {
@@ -24,7 +23,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor untuk menangani 401 (Token Expired / Invalid)
 api.interceptors.response.use(
   (response) => response,
   (error) => {

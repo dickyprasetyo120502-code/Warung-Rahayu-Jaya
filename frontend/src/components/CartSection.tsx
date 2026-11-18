@@ -38,7 +38,6 @@ export default function CartSection({
   const [validationError, setValidationError] = useState<string>('');
   const [cashGiven, setCashGiven] = useState<number | ''>('');
 
-  // State untuk Midtrans QRIS Snap
   const [snapToken, setSnapToken] = useState<string | null>(null);
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
   const [isLoadingSnap, setIsLoadingSnap] = useState<boolean>(false);
@@ -48,15 +47,13 @@ export default function CartSection({
   }, []);
 
   const subtotal = grandTotal;
-  const tax = Math.round(subtotal * 0.1); // PB1 10%
+  const tax = Math.round(subtotal * 0.1);
   const totalAkhir = subtotal + tax;
 
-  // Kalkulasi uang tunai & kembalian
   const numCash = typeof cashGiven === 'number' ? cashGiven : 0;
   const kembalian = numCash >= totalAkhir ? numCash - totalAkhir : 0;
   const isCashSufficient = paymentMethod !== 'cash' || (typeof cashGiven === 'number' && cashGiven >= totalAkhir);
 
-  // Quick cash generator
   const getQuickAmounts = () => {
     const standard = [50000, 100000, 150000, 200000, 500000];
     const filtered = standard.filter((amt) => amt >= totalAkhir);
@@ -68,11 +65,9 @@ export default function CartSection({
     return list.slice(0, 4);
   };
 
-  // Handler eksekusi pembayaran langsung -> simpan & langsung terbitkan struk
   const handleExecutePayment = async (selectedMethod: 'cash' | 'edc' | 'qris') => {
     setValidationError('');
 
-    // Validasi input data pemesan & menu dengan ZOD
     const validationResult = createOrderSchema.safeParse({
       orderType,
       tableNumber: orderType === 'dine-in' ? tableNumber : null,
@@ -94,7 +89,7 @@ export default function CartSection({
     if (selectedMethod === 'cash') {
       if (typeof cashGiven !== 'number' || cashGiven < totalAkhir) {
         alert(
-          `Uang tunai yang diberikan (Rp${(numCash).toLocaleString('id-ID')}) kurang dari total tagihan (Rp${totalAkhir.toLocaleString('id-ID')}).`
+          `Uang tunai yang diberikan (Rp${numCash.toLocaleString('id-ID')}) kurang dari total tagihan (Rp${totalAkhir.toLocaleString('id-ID')}).`
         );
         return;
       }
@@ -129,21 +124,15 @@ export default function CartSection({
     };
 
     try {
-      // 1. Simpan ke Backend PostgreSQL REST API via Axios
       await api.post('/orders', orderData);
     } catch (e: any) {
-      console.warn(
-        'Backend PostgreSQL offline/dalam proses sync, mencatat ke penyimpanan lokal kasir:',
-        e.message
-      );
+      console.warn(e.message);
     }
 
-    // 2. Potong stok menu & catat transaksi lokal (otomatis sinkron ke Admin)
     deductStock(cartItems);
     recordTransaction(orderData);
     incrementOrderNumber();
 
-    // 3. Kosongkan keranjang dan reset form pembayaran kasir
     setIsProcessing(false);
     onResetCart();
     setNama('');
@@ -154,16 +143,11 @@ export default function CartSection({
     setRedirectUrl(null);
     setOrderNumber(getNextOrderNumber());
 
-    // 4. Otomatis gulir (scroll) layar ke bagian paling atas
     window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    // 5. Terbitkan struk resmi (Receipt Modal)
     onShowReceipt(orderData);
   };
 
-  // Handler Buka Layar QRIS Midtrans (Snap Pop-up)
   const handleOpenMidtransQRIS = async () => {
-    // Validasi form data dulu
     const validationResult = createOrderSchema.safeParse({
       orderType,
       tableNumber: orderType === 'dine-in' ? tableNumber : null,
@@ -185,7 +169,6 @@ export default function CartSection({
     setIsLoadingSnap(true);
 
     try {
-      // Request Snap Token resmi dari backend
       const res = await api.post('/orders/snap-token', {
         orderNumber,
         grossAmount: totalAkhir,
@@ -209,7 +192,6 @@ export default function CartSection({
           ? 'https://app.midtrans.com/snap/snap.js'
           : 'https://app.sandbox.midtrans.com/snap/snap.js';
 
-        // Pastikan script Midtrans Snap yang cocok (Sandbox atau Production) dimuat
         let snapObj = (window as any).snap;
         if (
           !snapObj ||
@@ -233,37 +215,31 @@ export default function CartSection({
           snapObj = (window as any).snap;
         }
 
-        // Jalankan popup Snap resmi Midtrans
         if (snapObj && typeof snapObj.pay === 'function') {
           snapObj.pay(res.data.token, {
-            onSuccess: function (result: any) {
-              console.log('Midtrans Snap Sukses:', result);
+            onSuccess: function () {
               handleExecutePayment('qris');
             },
-            onPending: function (result: any) {
-              console.log('Midtrans Snap Menunggu:', result);
+            onPending: function () {
               handleExecutePayment('qris');
             },
-            onError: function (err: any) {
-              console.error('Midtrans Snap Eror:', err);
+            onError: function () {
               alert('Pembayaran QRIS Midtrans dibatalkan atau terjadi kendala.');
             },
-            onClose: function () {
-              console.log('Pop-up Midtrans ditutup kasir/pelanggan.');
-            },
+            onClose: function () {},
           });
         }
       }
     } catch (err: any) {
-      console.warn('Gagal memanggil endpoint Midtrans:', err.message);
+      console.warn(err.message);
       const backendMsg = err.response?.data?.message;
       if (backendMsg) {
         alert(
-          `⚠️ ${backendMsg}\n\n💡 Catatan Kasir: Anda tetap dapat memproses pesanan dan mencetak struk dengan menekan tombol hijau "Pelanggan Sudah Scan & Berhasil (Cetak Struk)" di bawah.`
+          `⚠️ ${backendMsg}\n\nAnda dapat mengonfirmasi pembayaran dengan menekan tombol "Pelanggan Sudah Scan & Berhasil (Cetak Struk)" di bawah.`
         );
       } else {
         alert(
-          'Catatan: Backend sedang offline atau belum terhubung ke Midtrans API. Anda tetap dapat mengonfirmasi pembayaran QRIS langsung dengan tombol hijau di bawah.'
+          'Catatan: Backend sedang offline atau belum terhubung ke Midtrans API. Anda tetap dapat mengonfirmasi pembayaran QRIS langsung dengan tombol di bawah.'
         );
       }
     } finally {
@@ -273,7 +249,6 @@ export default function CartSection({
 
   return (
     <section className="cart-pos-container" id="cart">
-      {/* 1. Header Ringkasan Pesanan & Nomor Meja */}
       <div className="pos-order-card">
         <div className="pos-order-left">
           <div className="pos-order-icon">
@@ -301,7 +276,6 @@ export default function CartSection({
         </div>
       </div>
 
-      {/* 2. Form Identitas Pemesan & Nomor Meja */}
       <div className="pos-form-box">
         <div className="pos-form-header">
           <span className="pos-form-title">📝 Data Pemesan & Layanan</span>
@@ -398,7 +372,6 @@ export default function CartSection({
         </div>
       </div>
 
-      {/* 3. Daftar Rincian Menu Pesanan */}
       <div className="pos-cart-items-card">
         <div className="pos-cart-header">
           <div className="pos-cart-title">
@@ -455,7 +428,6 @@ export default function CartSection({
               </div>
             ))}
 
-            {/* Kalkulasi Subtotal & PB1 */}
             <div className="pos-calculation-box">
               <div className="calc-item">
                 <span>Subtotal</span>
@@ -476,7 +448,6 @@ export default function CartSection({
         )}
       </div>
 
-      {/* 4. Pemilihan Metode Pembayaran & Konfirmasi Langsung */}
       {cartItems.length > 0 && (
         <div className="pos-payment-card" id="payment-action-area">
           <div className="pos-cart-header">
@@ -525,7 +496,6 @@ export default function CartSection({
             </button>
           </div>
 
-          {/* ================= TABEL RINCIAN PEMBAYARAN ================= */}
           <div className="pos-order-summary-table-box">
             <div className="table-box-header">
               <span className="table-box-title">
@@ -581,7 +551,6 @@ export default function CartSection({
             </div>
           </div>
 
-          {/* ================= AREA METODE PEMBAYARAN: TUNAI (CASH) ================= */}
           {paymentMethod === 'cash' && (
             <div className="cash-payment-form" style={{ marginTop: '16px' }}>
               <div className="cash-form-title">
@@ -600,7 +569,6 @@ export default function CartSection({
                 autoFocus
               />
 
-              {/* Tombol Cepat Pilihan Uang */}
               <div className="quick-cash-btns">
                 <button
                   type="button"
@@ -632,7 +600,6 @@ export default function CartSection({
                 ))}
               </div>
 
-              {/* PENGINGAT KEMBALIAN (CHANGE REMINDER) SANGAT JELAS */}
               <div style={{ marginTop: '12px' }}>
                 {cashGiven === '' || cashGiven === 0 ? (
                   <div
@@ -715,7 +682,6 @@ export default function CartSection({
                 )}
               </div>
 
-              {/* TOMBOL BAYAR TUNAI LANGSUNG MUNCULKAN STRUK */}
               <div style={{ marginTop: '16px' }}>
                 <button
                   type="button"
@@ -737,7 +703,6 @@ export default function CartSection({
             </div>
           )}
 
-          {/* ================= AREA METODE PEMBAYARAN: EDC (KARTU) ================= */}
           {paymentMethod === 'edc' && (
             <div className="cash-payment-form" style={{ marginTop: '16px', background: '#F8FAFC', borderColor: '#CBD5E1' }}>
               <div className="cash-form-title" style={{ color: '#1E293B' }}>
@@ -774,7 +739,6 @@ export default function CartSection({
             </div>
           )}
 
-          {/* ================= AREA METODE PEMBAYARAN: QRIS MIDTRANS ================= */}
           {paymentMethod === 'qris' && (
             <div className="qris-display-box" style={{ marginTop: '16px' }}>
               <div className="qris-box-header">
@@ -782,7 +746,6 @@ export default function CartSection({
                 <strong>Midtrans Dynamic Payment — Warung Rahayu Jaya</strong>
               </div>
 
-              {/* Tampilan QR Code (Menampilkan link redirect resmi jika ada, atau petunjuk) */}
               <div className="qris-qr-wrapper" style={{ margin: '14px auto' }}>
                 <QRCodeSVG
                   value={
@@ -800,7 +763,6 @@ export default function CartSection({
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {/* Tombol Buka Pop-up Snap Midtrans */}
                 <button
                   type="button"
                   className="btn-pay-now"
@@ -813,7 +775,6 @@ export default function CartSection({
                     : '📱 Buka Layar QRIS Midtrans (Snap Pop-Up)'}
                 </button>
 
-                {/* Tombol Konfirmasi Langsung Kasir */}
                 <button
                   type="button"
                   className="btn-pay-now"
@@ -829,7 +790,6 @@ export default function CartSection({
             </div>
           )}
 
-          {/* Tombol Batalkan Keranjang */}
           <div className="pos-actions-bottom" style={{ marginTop: '16px' }}>
             <button
               type="button"

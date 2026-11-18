@@ -11,7 +11,6 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { username, password, role } = req.body;
 
-    // Cari user di database PostgreSQL
     const user = await prisma.user.findUnique({
       where: { username: username.toLowerCase() },
     });
@@ -23,7 +22,6 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Validasi kesesuaian role
     if (role && user.role !== role) {
       return res.status(401).json({
         success: false,
@@ -31,7 +29,6 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Bandingkan password dengan bcrypt
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -40,7 +37,6 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Generate JWT Token
     const token = jwt.sign(
       {
         id: user.id,
@@ -49,7 +45,7 @@ export const login = async (req: Request, res: Response) => {
         name: user.name,
       },
       JWT_SECRET,
-      { expiresIn: (process.env.JWT_EXPIRES_IN || '1d') as any }
+      { expiresIn: (JWT_EXPIRES_IN || '1d') as any }
     );
 
     return res.json({
@@ -64,7 +60,7 @@ export const login = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error saat login:', error);
+    console.error(error);
     return res.status(500).json({
       success: false,
       message: 'Terjadi kesalahan pada server saat login.',
@@ -98,7 +94,10 @@ export const getMe = async (req: AuthenticatedRequest, res: Response) => {
       user,
     });
   } catch (error: any) {
-    return res.status(500).json({ success: false, message: 'Gagal mengambil data user' });
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal mengambil data akun pengguna.',
+    });
   }
 };
-
