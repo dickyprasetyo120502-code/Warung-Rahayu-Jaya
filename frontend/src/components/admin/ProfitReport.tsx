@@ -249,10 +249,10 @@ export default function ProfitReport({
       period === 'hari'
         ? `Hari Ini (${fullDateStr})`
         : period === 'minggu'
-        ? '7 Hari Terakhir'
-        : period === 'bulan'
-        ? `Bulan ${currentMonthYear}`
-        : 'Semua Transaksi Tercatat';
+          ? '7 Hari Terakhir'
+          : period === 'bulan'
+            ? `Bulan ${currentMonthYear}`
+            : 'Semua Transaksi Tercatat';
     doc.text(periodLabel, 58, y + 10.5);
 
     doc.setFont('helvetica', 'bold');
@@ -447,7 +447,7 @@ export default function ProfitReport({
           </div>
           <div className="report-title-row">
             <h1>Ringkasan Laba Bersih</h1>
-            
+
           </div>
           <p className="report-timestamp-meta">
             📅 {fullDateStr} • Pukul {fullTimeStr}

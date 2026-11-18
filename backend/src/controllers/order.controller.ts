@@ -211,11 +211,11 @@ export const createSnapToken = async (req: Request, res: Response) => {
 
     let itemDetailsList: any[] = Array.isArray(items) && items.length > 0
       ? items.map((it: any) => ({
-          id: String(it.id || 'item'),
-          price: Number(it.price || it.harga),
-          quantity: Number(it.quantity || it.qty || 1),
-          name: String(it.name || it.nama || 'Menu').substring(0, 50),
-        }))
+        id: String(it.id || 'item'),
+        price: Number(it.price || it.harga),
+        quantity: Number(it.quantity || it.qty || 1),
+        name: String(it.name || it.nama || 'Menu').substring(0, 50),
+      }))
       : [];
 
     const taxDiff = Number(grossAmount) - totalItemSubtotal;

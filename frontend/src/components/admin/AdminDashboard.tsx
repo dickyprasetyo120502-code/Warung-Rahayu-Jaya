@@ -243,7 +243,7 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
           >
             <span className="tab-icon">📑</span>
             <span>Laporan Laba Bersih (Financial F&B)</span>
-         
+
           </button>
         </div>
       </div>
