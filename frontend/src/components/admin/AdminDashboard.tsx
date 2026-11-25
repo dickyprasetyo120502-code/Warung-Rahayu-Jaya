@@ -4,13 +4,40 @@ import api from '../../lib/api';
 import {
   getStocks,
   updateStock,
+  setAllStocks,
   getTransactions,
   clearAllTransactions,
 } from '../../utils/stockStorage';
-import { MENU_CATEGORIES } from '../../data/menuData';
+import {
+  getMenuCategories,
+  addMenuItem,
+  updateMenuItem,
+  deleteMenuItem,
+  MenuCategory,
+} from '../../data/menuData';
 import { AuthUser } from '../../schemas/auth.schema';
 import { OrderData } from '../../schemas/order.schema';
 import { updateStockSchema, MenuItemData } from '../../schemas/menu.schema';
+
+const PRESET_IMAGES = [
+  { label: 'Ayam Goreng', path: '/images/ayam-goreng.jpg' },
+  { label: 'Ayam Bakar', path: '/images/ayam-bakar.jpg' },
+  { label: 'Ayam Bumbu Bali', path: '/images/ayam-bumbu-bali.jpg' },
+  { label: 'Ayam Bekakak', path: '/images/ayam-bekakak.jpg' },
+  { label: 'Nila Goreng', path: '/images/nila-goreng.jpg' },
+  { label: 'Nila Bakar', path: '/images/nila-bakar.jpg' },
+  { label: 'Ikan Pesmol', path: '/images/ikan-pesmol.jpg' },
+  { label: 'Pecel Lele', path: '/images/pecel-lele.jpg' },
+  { label: 'Soto', path: '/images/soto.jpg' },
+  { label: 'Ati Ampela', path: '/images/ati-ampela.jpg' },
+  { label: 'Tahu', path: '/images/tahu.jpg' },
+  { label: 'Tempe', path: '/images/tempe.jpg' },
+  { label: 'Nasi Putih', path: '/images/nasi-putih.jpg' },
+  { label: 'Es Teh Manis', path: '/images/es-teh-manis.jpg' },
+  { label: 'Es Jeruk', path: '/images/es-jeruk.jpg' },
+  { label: 'Air Mineral', path: '/images/air-mineral.jpg' },
+  { label: 'Es Batu', path: '/images/es-batu.jpg' },
+];
 
 interface AdminDashboardProps {
   authUser?: AuthUser | null;
@@ -18,12 +45,25 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ authUser, onLogout }: AdminDashboardProps) {
+  const [categories, setCategories] = useState<MenuCategory[]>(() => getMenuCategories());
   const [stocks, setStocks] = useState<Record<string, number>>(getStocks());
   const [transactions, setTransactions] = useState<OrderData[]>(getTransactions());
-  const [adminTab, setAdminTab] = useState<'dashboard' | 'laporan'>('dashboard');
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'kelola-menu' | 'laporan'>('dashboard');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchStock, setSearchStock] = useState<string>('');
   const [stockFilterType, setStockFilterType] = useState<'all' | 'low' | 'out'>('all');
+
+  const [isMenuModalOpen, setIsMenuModalOpen] = useState<boolean>(false);
+  const [editingMenuItem, setEditingMenuItem] = useState<(MenuItemData & { categoryId?: string }) | null>(null);
+  const [menuFormName, setMenuFormName] = useState<string>('');
+  const [menuFormCategory, setMenuFormCategory] = useState<string>('ayam');
+  const [menuFormCustomCat, setMenuFormCustomCat] = useState<string>('');
+  const [menuFormPrice, setMenuFormPrice] = useState<number | ''>('');
+  const [menuFormStock, setMenuFormStock] = useState<number | ''>(0);
+  const [menuFormDesc, setMenuFormDesc] = useState<string>('');
+  const [menuFormImage, setMenuFormImage] = useState<string>('/images/ayam-goreng.jpg');
+  const [menuSearchQuery, setMenuSearchQuery] = useState<string>('');
+  const [menuFilterCat, setMenuFilterCat] = useState<string>('all');
 
   useEffect(() => {
     const handleStockUpdate = () => {
@@ -32,19 +72,152 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
     const handleTxUpdate = () => {
       setTransactions(getTransactions());
     };
+    const handleMenuUpdate = () => {
+      setCategories(getMenuCategories());
+    };
 
     window.addEventListener('wrj_stock_updated', handleStockUpdate);
     window.addEventListener('wrj_transactions_updated', handleTxUpdate);
+    window.addEventListener('wrj_menu_updated', handleMenuUpdate);
     window.addEventListener('storage', (e) => {
       if (e.key === 'wrj_menu_stocks') setStocks(getStocks());
       if (e.key === 'wrj_sales_transactions') setTransactions(getTransactions());
+      if (e.key === 'wrj_menu_categories') setCategories(getMenuCategories());
     });
 
     return () => {
       window.removeEventListener('wrj_stock_updated', handleStockUpdate);
       window.removeEventListener('wrj_transactions_updated', handleTxUpdate);
+      window.removeEventListener('wrj_menu_updated', handleMenuUpdate);
     };
   }, []);
+
+  const handleOpenAddMenu = () => {
+    setEditingMenuItem(null);
+    setMenuFormName('');
+    setMenuFormCategory(categories[0]?.id || 'ayam');
+    setMenuFormCustomCat('');
+    setMenuFormPrice('');
+    setMenuFormStock(20);
+    setMenuFormDesc('');
+    setMenuFormImage('/images/ayam-goreng.jpg');
+    setIsMenuModalOpen(true);
+  };
+
+  const handleOpenEditMenu = (item: MenuItemData & { categoryId?: string }) => {
+    setEditingMenuItem(item);
+    setMenuFormName(item.nama);
+    setMenuFormCategory(item.categoryId || 'ayam');
+    setMenuFormCustomCat('');
+    setMenuFormPrice(item.harga);
+    setMenuFormStock(stocks[item.id] !== undefined ? stocks[item.id] : 20);
+    setMenuFormDesc(item.deskripsi || '');
+    setMenuFormImage(item.gambar || '/images/ayam-goreng.jpg');
+    setIsMenuModalOpen(true);
+  };
+
+  const handleSaveMenuItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!menuFormName.trim()) {
+      alert('⚠️ Nama menu wajib diisi.');
+      return;
+    }
+    const priceNum = Number(menuFormPrice);
+    if (!priceNum || priceNum <= 0) {
+      alert('⚠️ Harga menu harus lebih dari Rp 0.');
+      return;
+    }
+    const stockNum = menuFormStock === '' ? 20 : Math.max(0, Number(menuFormStock));
+
+    let finalCatId = menuFormCategory;
+    let finalCatTitle: string | undefined;
+
+    if (menuFormCategory === '__new__') {
+      if (!menuFormCustomCat.trim()) {
+        alert('⚠️ Nama kategori baru wajib diisi.');
+        return;
+      }
+      finalCatTitle = menuFormCustomCat.trim();
+      finalCatId = finalCatTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    }
+
+    if (editingMenuItem) {
+      try {
+        await api.put(`/menu/${editingMenuItem.id}`, {
+          nama: menuFormName.trim(),
+          harga: priceNum,
+          deskripsi: menuFormDesc.trim() || null,
+          gambar: menuFormImage.trim() || '/images/ayam-goreng.jpg',
+          stock: stockNum,
+          categoryId: finalCatId,
+          categoryTitle: finalCatTitle,
+        });
+      } catch (err: any) {
+        console.warn('Backend edit menu offline:', err.message);
+      }
+
+      const updated = updateMenuItem(editingMenuItem.id, {
+        nama: menuFormName.trim(),
+        harga: priceNum,
+        deskripsi: menuFormDesc.trim() || null,
+        gambar: menuFormImage.trim() || '/images/ayam-goreng.jpg',
+        initialStock: stockNum,
+        categoryId: finalCatId,
+      });
+      setCategories(updated);
+      setIsMenuModalOpen(false);
+      alert(`✅ Menu "${menuFormName.trim()}" berhasil diperbarui!`);
+    } else {
+      let createdId: string | undefined;
+      try {
+        const res = await api.post('/menu', {
+          nama: menuFormName.trim(),
+          harga: priceNum,
+          deskripsi: menuFormDesc.trim() || null,
+          gambar: menuFormImage.trim() || '/images/ayam-goreng.jpg',
+          stock: stockNum,
+          categoryId: finalCatId,
+          categoryTitle: finalCatTitle,
+        });
+        if (res.data?.item?.id) {
+          createdId = res.data.item.id;
+        }
+      } catch (err: any) {
+        console.warn('Backend add menu offline:', err.message);
+      }
+
+      const updated = addMenuItem(
+        finalCatId,
+        {
+          id: createdId,
+          nama: menuFormName.trim(),
+          harga: priceNum,
+          deskripsi: menuFormDesc.trim() || null,
+          gambar: menuFormImage.trim() || '/images/ayam-goreng.jpg',
+          initialStock: stockNum,
+        },
+        finalCatTitle
+      );
+      setCategories(updated);
+      setIsMenuModalOpen(false);
+      alert(`✅ Menu baru "${menuFormName.trim()}" berhasil ditambahkan!`);
+    }
+  };
+
+  const handleDeleteMenu = async (itemId: string, itemName: string) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus menu "${itemName}"?`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/menu/${itemId}`);
+    } catch (err: any) {
+      console.warn('Backend delete menu offline:', err.message);
+    }
+
+    const updated = deleteMenuItem(itemId);
+    setCategories(updated);
+  };
 
   const handleUpdateStock = async (itemId: string, newStock: number) => {
     const valResult = updateStockSchema.safeParse({ stock: newStock });
@@ -73,10 +246,20 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
   };
 
   const handleResetTransactions = () => {
-    if (window.confirm('Apakah Anda yakin ingin mereset seluruh data transaksi hari ini kembali ke 0?')) {
+    if (window.confirm('Apakah Anda yakin ingin mereset seluruh data transaksi dan stok semua menu kembali ke 0?')) {
       clearAllTransactions();
       setTransactions([]);
-      alert('Data transaksi hari ini telah direset ke 0.');
+
+      const zeroStocks: Record<string, number> = {};
+      categories.forEach((cat) => {
+        cat.items.forEach((item) => {
+          zeroStocks[item.id] = 0;
+        });
+      });
+      setAllStocks(zeroStocks);
+      setStocks(zeroStocks);
+
+      alert('✅ Semua data pesanan dan stok menu berhasil direset ke 0.');
     }
   };
 
@@ -85,7 +268,8 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
     const paymentCount = { qris: 0, cash: 0, edc: 0 };
     const menuSoldMap: Record<string, { id: string; nama: string; gambar?: string; harga: number; qty: number; totalRevenue: number }> = {};
 
-    transactions.forEach((tx) => {
+    const paidTx = transactions.filter((tx) => tx.paymentStatus !== 'PENDING');
+    paidTx.forEach((tx) => {
       income += tx.total || 0;
 
       if (tx.paymentMethod === 'qris') paymentCount.qris++;
@@ -110,7 +294,7 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
       }
     });
 
-    const txCount = transactions.length;
+    const txCount = paidTx.length;
     const averageOrder = txCount > 0 ? Math.round(income / txCount) : 0;
 
     const totalPay = txCount || 1;
@@ -138,13 +322,28 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
 
   const allMenuItems = useMemo(() => {
     const list: (MenuItemData & { categoryTitle: string })[] = [];
-    MENU_CATEGORIES.forEach((cat) => {
+    categories.forEach((cat) => {
       cat.items.forEach((item) => {
         list.push({ ...item, categoryId: cat.id, categoryTitle: cat.title });
       });
     });
     return list;
-  }, []);
+  }, [categories]);
+
+  const filteredManagedMenus = useMemo(() => {
+    return allMenuItems.filter((item) => {
+      if (menuFilterCat !== 'all' && item.categoryId !== menuFilterCat) {
+        return false;
+      }
+      if (
+        menuSearchQuery.trim() &&
+        !item.nama.toLowerCase().includes(menuSearchQuery.toLowerCase().trim())
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [allMenuItems, menuFilterCat, menuSearchQuery]);
 
   const filteredStockItems = useMemo(() => {
     return allMenuItems.filter((item) => {
@@ -238,12 +437,20 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
 
           <button
             type="button"
+            className={`admin-nav-tab-btn ${adminTab === 'kelola-menu' ? 'active' : ''}`}
+            onClick={() => setAdminTab('kelola-menu')}
+          >
+            <span className="tab-icon">🍽️</span>
+            <span>Kelola Menu (Tambah & Edit)</span>
+          </button>
+
+          <button
+            type="button"
             className={`admin-nav-tab-btn ${adminTab === 'laporan' ? 'active' : ''}`}
             onClick={() => setAdminTab('laporan')}
           >
             <span className="tab-icon">📑</span>
-            <span>Laporan Laba Bersih (Financial F&B)</span>
-
+            <span>Laporan Penghasilan Kotor & Histori</span>
           </button>
         </div>
       </div>
@@ -254,6 +461,175 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
           stocks={stocks}
           totalPendapatanHariIni={totalPendapatan}
         />
+      ) : adminTab === 'kelola-menu' ? (
+        <div className="laptop-admin-content">
+          <div className="laptop-welcome-banner" style={{ marginBottom: '24px' }}>
+            <div className="welcome-info">
+              <span className="welcome-date">{currentDateStr}</span>
+              <h1>Manajemen Katalog Menu Restoran</h1>
+              <p>
+                Tambah menu baru, ubah nama, harga, kategori, stok, dan foto menu. Semua perubahan langsung tampil di layar kasir POS dan pemesanan customer.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleOpenAddMenu}
+              style={{
+                backgroundColor: '#16A34A',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '12px 24px',
+                fontSize: '14px',
+                fontWeight: '800',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span>➕</span>
+              <span>Tambah Menu Baru</span>
+            </button>
+          </div>
+
+          <div className="laptop-panel" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div className="stock-search-input" style={{ flex: '1', minWidth: '240px', maxWidth: '400px' }}>
+                <span className="search-icon">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Cari nama menu untuk diedit..."
+                  value={menuSearchQuery}
+                  onChange={(e) => setMenuSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <div className="category-filter-pills" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                <button
+                  type="button"
+                  className={`filter-pill ${menuFilterCat === 'all' ? 'active' : ''}`}
+                  onClick={() => setMenuFilterCat('all')}
+                >
+                  Semua ({allMenuItems.length})
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    className={`filter-pill ${menuFilterCat === cat.id ? 'active' : ''}`}
+                    onClick={() => setMenuFilterCat(cat.id)}
+                  >
+                    {cat.title} ({cat.items.length})
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="laptop-table-container">
+              <table className="laptop-stock-table">
+                <thead>
+                  <tr>
+                    <th>Foto & Nama Menu</th>
+                    <th>Kategori</th>
+                    <th style={{ textAlign: 'right' }}>Harga Jual</th>
+                    <th style={{ textAlign: 'center' }}>Stok</th>
+                    <th style={{ textAlign: 'right' }}>Aksi Admin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredManagedMenus.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>
+                        Belum ada menu yang cocok dengan filter pencarian.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredManagedMenus.map((item) => {
+                      const currentStock = stocks[item.id] !== undefined ? stocks[item.id] : 20;
+                      return (
+                        <tr key={item.id}>
+                          <td>
+                            <div className="table-menu-cell">
+                              <img
+                                src={item.gambar || '/images/ayam-goreng.jpg'}
+                                alt={item.nama}
+                                className="table-menu-img"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/images/ayam-goreng.jpg';
+                                }}
+                              />
+                              <div>
+                                <div className="table-menu-name">{item.nama}</div>
+                                <div style={{ fontSize: '12px', color: '#64748B', maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {item.deskripsi || 'Tidak ada deskripsi'}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span style={{ background: '#F1F5F9', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', color: '#334155' }}>
+                              {item.categoryTitle}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: '800', color: '#15803D', fontSize: '15px' }}>
+                            Rp {item.harga.toLocaleString('id-ID')}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className={`stock-pill-badge ${currentStock === 0 ? 'empty' : currentStock <= 5 ? 'low' : 'ok'}`}>
+                              {currentStock} porsi
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditMenu(item)}
+                                style={{
+                                  backgroundColor: '#EFF6FF',
+                                  color: '#1D4ED8',
+                                  border: '1px solid #BFDBFE',
+                                  borderRadius: '6px',
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  fontWeight: '700',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                }}
+                              >
+                                <span>✏️</span> Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMenu(item.id, item.nama)}
+                                style={{
+                                  backgroundColor: '#FEF2F2',
+                                  color: '#DC2626',
+                                  border: '1px solid #FECACA',
+                                  borderRadius: '6px',
+                                  padding: '6px 10px',
+                                  fontSize: '12px',
+                                  fontWeight: '700',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                🗑️ Hapus
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="laptop-admin-content">
           <div className="laptop-welcome-banner">
@@ -362,7 +738,7 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
                     >
                       Semua ({allMenuItems.length})
                     </button>
-                    {MENU_CATEGORIES.map((cat) => (
+                    {categories.map((cat) => (
                       <button
                         key={cat.id}
                         type="button"
@@ -665,6 +1041,18 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
 
         <button
           type="button"
+          className={`mobile-nav-btn ${adminTab === 'kelola-menu' ? 'active' : ''}`}
+          onClick={() => {
+            setAdminTab('kelola-menu');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        >
+          <span className="m-nav-icon">🍽️</span>
+          <span className="m-nav-label">Menu</span>
+        </button>
+
+        <button
+          type="button"
           className={`mobile-nav-btn ${adminTab === 'laporan' ? 'active' : ''}`}
           onClick={() => {
             setAdminTab('laporan');
@@ -672,7 +1060,7 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
           }}
         >
           <span className="m-nav-icon">📑</span>
-          <span className="m-nav-label">Laba Bersih</span>
+          <span className="m-nav-label">Penghasilan</span>
         </button>
 
         <button
@@ -696,6 +1084,202 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
           </button>
         )}
       </nav>
+
+      {isMenuModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            backdropFilter: 'blur(3px)',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              maxWidth: '540px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #E2E8F0', paddingBottom: '12px' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#1E293B' }}>
+                  {editingMenuItem ? `✏️ Edit Menu: ${editingMenuItem.nama}` : '➕ Tambah Menu Baru'}
+                </h2>
+                <small style={{ color: '#64748B' }}>
+                  Isi detail menu dengan lengkap. Perubahan akan langsung tersinkron ke kasir POS.
+                </small>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMenuModalOpen(false)}
+                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748B' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMenuItem} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                  NAMA MENU *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={menuFormName}
+                  onChange={(e) => setMenuFormName(e.target.value)}
+                  placeholder="Contoh: Bebek Goreng Sambal Korek"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '14px', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                    KATEGORI MENU *
+                  </label>
+                  <select
+                    value={menuFormCategory}
+                    onChange={(e) => setMenuFormCategory(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '14px', boxSizing: 'border-box', background: '#FFFFFF' }}
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.title}
+                      </option>
+                    ))}
+                    <option value="__new__">+ Buat Kategori Baru...</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                    HARGA JUAL (RP) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={500}
+                    value={menuFormPrice}
+                    onChange={(e) => setMenuFormPrice(e.target.value ? parseInt(e.target.value, 10) : '')}
+                    placeholder="Contoh: 25000"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              {menuFormCategory === '__new__' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#1D4ED8', marginBottom: '6px' }}>
+                    NAMA KATEGORI BARU *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={menuFormCustomCat}
+                    onChange={(e) => setMenuFormCustomCat(e.target.value)}
+                    placeholder="Contoh: 🥤 Minuman Segar"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #93C5FD', fontSize: '14px', boxSizing: 'border-box', backgroundColor: '#EFF6FF' }}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                  STOK AWAL / PORSI TERSEDIA
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={menuFormStock}
+                  onChange={(e) => setMenuFormStock(e.target.value !== '' ? parseInt(e.target.value, 10) : '')}
+                  placeholder="20"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '14px', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                  DESKRIPSI MENU
+                </label>
+                <textarea
+                  rows={2}
+                  value={menuFormDesc}
+                  onChange={(e) => setMenuFormDesc(e.target.value)}
+                  placeholder="Keterangan singkat tentang cita rasa atau isi menu..."
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1', fontSize: '14px', boxSizing: 'border-box', resize: 'vertical' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                  GAMBAR / FOTO MENU
+                </label>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '8px' }}>
+                  <img
+                    src={menuFormImage || '/images/ayam-goreng.jpg'}
+                    alt="Preview"
+                    style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #CBD5E1' }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/images/ayam-goreng.jpg';
+                    }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <select
+                      value={PRESET_IMAGES.some((p) => p.path === menuFormImage) ? menuFormImage : ''}
+                      onChange={(e) => {
+                        if (e.target.value) setMenuFormImage(e.target.value);
+                      }}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '13px', marginBottom: '6px', background: '#F8FAFC' }}
+                    >
+                      <option value="">-- Pilih Foto Bawaan atau ketik URL di bawah --</option>
+                      {PRESET_IMAGES.map((img) => (
+                        <option key={img.path} value={img.path}>
+                          📷 {img.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={menuFormImage}
+                      onChange={(e) => setMenuFormImage(e.target.value)}
+                      placeholder="/images/ayam-goreng.jpg atau https://..."
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '12px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '12px', paddingTop: '14px', borderTop: '1px solid #E2E8F0' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsMenuModalOpen(false)}
+                  style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFFFFF', fontWeight: '700', color: '#475569', cursor: 'pointer' }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  style={{ flex: 2, padding: '12px', borderRadius: '8px', border: 'none', background: '#16A34A', fontWeight: '800', color: '#FFFFFF', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(22, 163, 74, 0.3)' }}
+                >
+                  {editingMenuItem ? '💾 Simpan Perubahan Menu' : '➕ Tambahkan Menu Baru'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

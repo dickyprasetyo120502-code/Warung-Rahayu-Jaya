@@ -415,3 +415,156 @@ export const handleMidtransNotification = async (req: Request, res: Response) =>
     return res.status(200).json({ status: 'OK' });
   }
 };
+
+export const updateOrder = async (req: Request, res: Response) => {
+  try {
+    const { orderNumber } = req.params;
+    const { cartItems, tableNumber, guestCount, nama, telepon, catatan, orderType } = req.body;
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { orderNumber },
+      include: { items: true },
+    });
+
+    if (!existingOrder) {
+      return res.status(404).json({
+        success: false,
+        message: `Pesanan dengan nomor ${orderNumber} tidak ditemukan.`,
+      });
+    }
+
+    if (existingOrder.paymentStatus === 'PAID') {
+      return res.status(400).json({
+        success: false,
+        message: 'Pesanan yang sudah Lunas tidak dapat diedit kembali.',
+      });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      let subtotal = 0;
+      if (cartItems && cartItems.length > 0) {
+        await tx.orderItem.deleteMany({
+          where: { orderId: existingOrder.id },
+        });
+
+        for (const item of cartItems) {
+          subtotal += item.harga * item.qty;
+          await tx.orderItem.create({
+            data: {
+              orderId: existingOrder.id,
+              menuItemId: item.id,
+              nama: item.nama,
+              harga: item.harga,
+              qty: item.qty,
+              total: item.harga * item.qty,
+            },
+          });
+        }
+      } else {
+        subtotal = existingOrder.subtotal;
+      }
+
+      const tax = Math.round(subtotal * 0.1);
+      const total = subtotal + tax;
+
+      return await tx.order.update({
+        where: { orderNumber },
+        data: {
+          tableNumber: tableNumber !== undefined ? tableNumber : existingOrder.tableNumber,
+          guestCount: guestCount !== undefined ? guestCount : existingOrder.guestCount,
+          nama: nama !== undefined ? nama : existingOrder.nama,
+          telepon: telepon !== undefined ? telepon : existingOrder.telepon,
+          catatan: catatan !== undefined ? catatan : existingOrder.catatan,
+          orderType: orderType !== undefined ? orderType : existingOrder.orderType,
+          subtotal,
+          tax,
+          total,
+        },
+        include: { items: true },
+      });
+    });
+
+    return res.json({
+      success: true,
+      message: `Pesanan ${orderNumber} berhasil diperbarui.`,
+      order: updated,
+    });
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal memperbarui pesanan.',
+    });
+  }
+};
+
+export const payOrder = async (req: Request, res: Response) => {
+  try {
+    const { orderNumber } = req.params;
+    const { paymentMethod } = req.body;
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { orderNumber },
+    });
+
+    if (!existingOrder) {
+      return res.status(404).json({
+        success: false,
+        message: `Pesanan ${orderNumber} tidak ditemukan.`,
+      });
+    }
+
+    const updated = await prisma.order.update({
+      where: { orderNumber },
+      data: {
+        paymentStatus: 'PAID',
+        paymentMethod: paymentMethod || existingOrder.paymentMethod,
+      },
+      include: { items: true },
+    });
+
+    return res.json({
+      success: true,
+      message: `Pembayaran pesanan ${orderNumber} berhasil dikonfirmasi LUNAS.`,
+      order: updated,
+    });
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal memproses pembayaran pesanan.',
+    });
+  }
+};
+
+export const cancelOrder = async (req: Request, res: Response) => {
+  try {
+    const { orderNumber } = req.params;
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { orderNumber },
+    });
+
+    if (!existingOrder) {
+      return res.status(404).json({
+        success: false,
+        message: `Pesanan ${orderNumber} tidak ditemukan.`,
+      });
+    }
+
+    await prisma.order.delete({
+      where: { orderNumber },
+    });
+
+    return res.json({
+      success: true,
+      message: `Pesanan ${orderNumber} berhasil dibatalkan dan dihapus.`,
+    });
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal membatalkan pesanan.',
+    });
+  }
+};

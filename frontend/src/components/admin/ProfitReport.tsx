@@ -11,10 +11,8 @@ interface ProfitReportProps {
 export default function ProfitReport({
   transactions = [],
   stocks = {},
-  totalPendapatanHariIni = 0,
 }: ProfitReportProps) {
-  const [period, setPeriod] = useState<'hari' | 'minggu' | 'bulan' | 'kustom'>('bulan');
-  const [showAllClosing, setShowAllClosing] = useState<boolean>(false);
+  const [period, setPeriod] = useState<'hari' | 'minggu' | 'bulan' | 'tahun' | 'semua'>('hari');
 
   const now = new Date();
   const fullDateStr = now.toLocaleDateString('id-ID', {
@@ -35,22 +33,77 @@ export default function ProfitReport({
     year: 'numeric',
   });
 
+  const periodBreakdown = useMemo(() => {
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const sevenDaysAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+
+    let dailyTotal = 0;
+    let dailyCount = 0;
+    let weeklyTotal = 0;
+    let weeklyCount = 0;
+    let monthlyTotal = 0;
+    let monthlyCount = 0;
+    let yearlyTotal = 0;
+    let yearlyCount = 0;
+    let allTotal = 0;
+    let allCount = 0;
+
+    const todayList: OrderData[] = [];
+
+    transactions.forEach((tx) => {
+      if (tx.paymentStatus === 'PENDING') return;
+      const amount = tx.total || 0;
+      const txTime = tx.timestamp ? new Date(tx.timestamp).getTime() : now.getTime();
+
+      allTotal += amount;
+      allCount++;
+
+      if (txTime >= startOfToday) {
+        dailyTotal += amount;
+        dailyCount++;
+        todayList.push(tx);
+      }
+      if (txTime >= sevenDaysAgo) {
+        weeklyTotal += amount;
+        weeklyCount++;
+      }
+      if (txTime >= startOfMonth) {
+        monthlyTotal += amount;
+        monthlyCount++;
+      }
+      if (txTime >= startOfYear) {
+        yearlyTotal += amount;
+        yearlyCount++;
+      }
+    });
+
+    return {
+      daily: { total: dailyTotal, count: dailyCount },
+      weekly: { total: weeklyTotal, count: weeklyCount },
+      monthly: { total: monthlyTotal, count: monthlyCount },
+      yearly: { total: yearlyTotal, count: yearlyCount },
+      all: { total: allTotal, count: allCount },
+      todayOrders: todayList,
+    };
+  }, [transactions]);
+
   const filteredTransactions = useMemo(() => {
-    if (!transactions || transactions.length === 0) return [];
+    const paidTx = (transactions || []).filter((tx) => tx.paymentStatus !== 'PENDING');
+    if (paidTx.length === 0) return [];
 
-    const nowMs = now.getTime();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-    const sevenDaysMs = 7 * oneDayMs;
-    const thirtyDaysMs = 30 * oneDayMs;
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const sevenDaysAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
 
-    return transactions.filter((tx) => {
-      if (!tx.timestamp) return true;
-      const txMs = new Date(tx.timestamp).getTime();
-      const diff = nowMs - txMs;
-
-      if (period === 'hari') return diff <= oneDayMs;
-      if (period === 'minggu') return diff <= sevenDaysMs;
-      if (period === 'bulan') return diff <= thirtyDaysMs;
+    return paidTx.filter((tx) => {
+      const txMs = tx.timestamp ? new Date(tx.timestamp).getTime() : now.getTime();
+      if (period === 'hari') return txMs >= startOfToday;
+      if (period === 'minggu') return txMs >= sevenDaysAgo;
+      if (period === 'bulan') return txMs >= startOfMonth;
+      if (period === 'tahun') return txMs >= startOfYear;
       return true;
     });
   }, [transactions, period]);
@@ -101,18 +154,6 @@ export default function ProfitReport({
       }
     });
 
-    const discount = 0;
-    const net = gross - discount;
-
-    const hppBahan = Math.round(net * 0.42);
-    const gajiKaryawan = Math.round(net * 0.16);
-    const listrikAir = Math.round(net * 0.05);
-    const operasionalGas = Math.round(net * 0.06);
-
-    const totalBeban = hppBahan + gajiKaryawan + listrikAir + operasionalGas;
-    const netProfit = net - totalBeban;
-    const profitMargin = net > 0 ? ((netProfit / net) * 100).toFixed(1) : '0';
-
     const aov = txCount > 0 ? Math.round(gross / txCount) : 0;
 
     const totalPayCount = txCount || 1;
@@ -124,15 +165,6 @@ export default function ProfitReport({
 
     return {
       grossSales: gross,
-      discount,
-      netSales: net,
-      hppBahan,
-      gajiKaryawan,
-      listrikAir,
-      operasionalGas,
-      totalBeban,
-      netProfit,
-      profitMargin,
       txCount,
       aov,
       payStats: {
@@ -149,48 +181,6 @@ export default function ProfitReport({
       soldItemsList,
     };
   }, [filteredTransactions]);
-
-  const dailyClosings = useMemo(() => {
-    if (!transactions || transactions.length === 0) {
-      return [
-        {
-          dayName: 'HARI INI',
-          dateNum: now.getDate(),
-          shiftTitle: 'Shift Berjalan',
-          kasirName: 'Kasir',
-          amount: 0,
-          strukCount: 0,
-          isKlop: true,
-        },
-      ];
-    }
-
-    const groups: Record<string, { dateKey: string; amount: number; strukCount: number; kasir: string }> = {};
-    transactions.forEach((tx) => {
-      const dateKey = tx.date ? tx.date.split(',')[0].trim() : 'Hari Ini';
-      if (!groups[dateKey]) {
-        groups[dateKey] = {
-          dateKey,
-          amount: 0,
-          strukCount: 0,
-          kasir: 'Kasir',
-        };
-      }
-      groups[dateKey].amount += tx.total || 0;
-      groups[dateKey].strukCount += 1;
-    });
-
-    return Object.values(groups).map((grp, idx) => ({
-      dayName: 'SHIFT',
-      dateNum: idx + 1,
-      dateKey: grp.dateKey,
-      shiftTitle: `Penutupan Shift (${grp.dateKey})`,
-      kasirName: grp.kasir,
-      amount: grp.amount,
-      strukCount: grp.strukCount,
-      isKlop: true,
-    }));
-  }, [transactions, now]);
 
   const handlePrintPdf = () => {
     const doc = new jsPDF({
@@ -211,7 +201,7 @@ export default function ProfitReport({
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(50, 50, 50);
-    doc.text('LAPORAN LABA BERSIH & ARUS KAS RESTORAN (RESMI)', pageWidth / 2, y, { align: 'center' });
+    doc.text('LAPORAN PENGHASILAN KOTOR & HISTORI PENJUALAN', pageWidth / 2, y, { align: 'center' });
     y += 5;
 
     doc.setFontSize(8.5);
@@ -219,90 +209,37 @@ export default function ProfitReport({
     doc.setTextColor(90, 90, 90);
     doc.text('Jl. Villa Gading Harapan 3 No.19 Blok D11, Babelan, Bekasi - Jawa Barat', pageWidth / 2, y, { align: 'center' });
     y += 4;
-    doc.text('WhatsApp: +62 812-3456-7890 | Website: warungrahayujaya.com', pageWidth / 2, y, { align: 'center' });
-    y += 4;
 
     doc.setDrawColor(25, 61, 44);
     doc.setLineWidth(0.8);
     doc.line(14, y, pageWidth - 14, y);
-    y += 1.2;
-    doc.setLineWidth(0.2);
-    doc.line(14, y, pageWidth - 14, y);
     y += 6;
 
-    doc.setFillColor(244, 246, 244);
-    doc.roundedRect(14, y, pageWidth - 28, 22, 2, 2, 'F');
-    doc.setDrawColor(216, 228, 221);
-    doc.roundedRect(14, y, pageWidth - 28, 22, 2, 2, 'D');
-
-    doc.setFontSize(8.5);
+    doc.setFontSize(9);
     doc.setTextColor(30, 30, 30);
     doc.setFont('helvetica', 'bold');
-    doc.text('Hari / Tanggal Cetak :', 18, y + 5.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${fullDateStr}, Pukul ${fullTimeStr}`, 58, y + 5.5);
+    doc.text(`Tanggal Cetak: ${fullDateStr}, ${fullTimeStr}`, 14, y);
+    y += 6;
 
-    doc.setFont('helvetica', 'bold');
-    doc.text('Periode Laporan       :', 18, y + 10.5);
-    doc.setFont('helvetica', 'normal');
-    const periodLabel =
-      period === 'hari'
-        ? `Hari Ini (${fullDateStr})`
-        : period === 'minggu'
-          ? '7 Hari Terakhir'
-          : period === 'bulan'
-            ? `Bulan ${currentMonthYear}`
-            : 'Semua Transaksi Tercatat';
-    doc.text(periodLabel, 58, y + 10.5);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('Status Audit Kas       :', 18, y + 15.5);
-    doc.setTextColor(21, 128, 61);
-    doc.text('TERVERIFIKASI KLOP (Selisih Fisik Rp 0)', 58, y + 15.5);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 30, 30);
-    doc.text('Penyusun Laporan     :', 125, y + 15.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Admin & Kasir', 160, y + 15.5);
-    y += 28;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10.5);
-    doc.setTextColor(25, 61, 44);
-    doc.text('1. RINGKASAN PENDAPATAN (SALES)', 14, y);
-    y += 5;
-
-    const rowH = 5.2;
-    const drawRow = (title: string, valStr: string, isBold = false, isMinus = false) => {
+    const drawRow = (title: string, valStr: string, isBold = false) => {
       doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-      doc.setFontSize(8.5);
-      doc.setTextColor(isMinus ? 185 : 40, isMinus ? 28 : 40, isMinus ? 28 : 40);
-      doc.text(title, 20, y);
-      doc.text(valStr, pageWidth - 20, y, { align: 'right' });
-      y += rowH;
+      doc.setFontSize(9);
+      doc.setTextColor(30, 30, 30);
+      doc.text(title, 18, y);
+      doc.text(valStr, pageWidth - 18, y, { align: 'right' });
+      y += 5.5;
     };
 
-    drawRow('• Penjualan Kotor (Gross Sales):', `Rp ${financialStats.grossSales.toLocaleString('id-ID')}`);
-    drawRow('• Potongan Diskon / Promo Pelanggan:', `- Rp ${financialStats.discount.toLocaleString('id-ID')}`, false, true);
-    doc.setDrawColor(220, 220, 220);
-    doc.line(20, y - 1, pageWidth - 20, y - 1);
-    drawRow('= PENDAPATAN BERSIH (NET SALES):', `Rp ${financialStats.netSales.toLocaleString('id-ID')}`, true);
-    y += 3;
-
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10.5);
     doc.setTextColor(25, 61, 44);
-    doc.text('2. ANALISIS PENGELUARAN & BEBAN USAHA F&B', 14, y);
-    y += 5;
+    doc.text('1. RINGKASAN PENGHASILAN KOTOR PER PERIODE', 14, y);
+    y += 6;
 
-    drawRow('• Bahan Baku / HPP (Daging Ayam, Nila, Beras, Bumbu):', `- Rp ${financialStats.hppBahan.toLocaleString('id-ID')}`);
-    drawRow('• Gaji Karyawan Dapur, Kasir & Pramusaji:', `- Rp ${financialStats.gajiKaryawan.toLocaleString('id-ID')}`);
-    drawRow('• Listrik Chiller Pendingin & Air PAM:', `- Rp ${financialStats.listrikAir.toLocaleString('id-ID')}`);
-    drawRow('• Operasional Gas LPG 12kg & Kemasan:', `- Rp ${financialStats.operasionalGas.toLocaleString('id-ID')}`);
-    doc.setDrawColor(220, 220, 220);
-    doc.line(20, y - 1, pageWidth - 20, y - 1);
-    drawRow('= TOTAL BEBAN OPERASIONAL:', `- Rp ${financialStats.totalBeban.toLocaleString('id-ID')}`, true, true);
+    drawRow(`• Hari Ini (${periodBreakdown.daily.count} pesanan):`, `Rp ${periodBreakdown.daily.total.toLocaleString('id-ID')}`);
+    drawRow(`• Mingguan / 7 Hari (${periodBreakdown.weekly.count} pesanan):`, `Rp ${periodBreakdown.weekly.total.toLocaleString('id-ID')}`);
+    drawRow(`• Bulanan (${periodBreakdown.monthly.count} pesanan):`, `Rp ${periodBreakdown.monthly.total.toLocaleString('id-ID')}`);
+    drawRow(`• Tahunan (${periodBreakdown.yearly.count} pesanan):`, `Rp ${periodBreakdown.yearly.total.toLocaleString('id-ID')}`);
     y += 4;
 
     doc.setFillColor(232, 240, 236);
@@ -313,106 +250,58 @@ export default function ProfitReport({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(25, 61, 44);
-    doc.text('HASIL AKHIR: LABA BERSIH (NET PROFIT)', 18, y + 9);
-    doc.text(
-      `Rp ${financialStats.netProfit.toLocaleString('id-ID')} (${financialStats.profitMargin}%)`,
-      pageWidth - 18,
-      y + 9,
-      { align: 'right' }
-    );
+    doc.text(`TOTAL PENGHASILAN KOTOR (${period.toUpperCase()})`, 18, y + 9);
+    doc.text(`Rp ${financialStats.grossSales.toLocaleString('id-ID')}`, pageWidth - 18, y + 9, { align: 'right' });
     y += 20;
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10.5);
     doc.setTextColor(25, 61, 44);
-    doc.text('3. METRIK TRANSAKSI & DISTRIBUSI PEMBAYARAN', 14, y);
-    y += 5;
+    doc.text('2. DISTRIBUSI METODE PEMBAYARAN', 14, y);
+    y += 6;
 
-    drawRow(`• Total Struk Terbit: ${financialStats.txCount} Struk`, `AOV: Rp ${financialStats.aov.toLocaleString('id-ID')} / pesanan`);
-    drawRow(
-      `• QRIS Dinamis Midtrans (${financialStats.payStats.qrisPct}%):`,
-      `${financialStats.payStats.qrisCount} transaksi • Rp ${financialStats.payStats.qrisTotal.toLocaleString('id-ID')}`
-    );
-    drawRow(
-      `• Tunai Kasir Drawer (${financialStats.payStats.cashPct}%):`,
-      `${financialStats.payStats.cashCount} transaksi • Rp ${financialStats.payStats.cashTotal.toLocaleString('id-ID')}`
-    );
-    drawRow(
-      `• Mesin EDC / Debit (${financialStats.payStats.edcPct}%):`,
-      `${financialStats.payStats.edcCount} transaksi • Rp ${financialStats.payStats.edcTotal.toLocaleString('id-ID')}`
-    );
-    y += 4;
+    drawRow(`• Tunai Kasir (${financialStats.payStats.cashPct}%):`, `${financialStats.payStats.cashCount} transaksi • Rp ${financialStats.payStats.cashTotal.toLocaleString('id-ID')}`);
+    drawRow(`• QRIS Dinamis (${financialStats.payStats.qrisPct}%):`, `${financialStats.payStats.qrisCount} transaksi • Rp ${financialStats.payStats.qrisTotal.toLocaleString('id-ID')}`);
+    drawRow(`• Mesin EDC (${financialStats.payStats.edcPct}%):`, `${financialStats.payStats.edcCount} transaksi • Rp ${financialStats.payStats.edcTotal.toLocaleString('id-ID')}`);
+    y += 6;
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10.5);
     doc.setTextColor(25, 61, 44);
-    doc.text('4. REKAPITULASI PENJUALAN MENU & SISA STOK DAPUR', 14, y);
-    y += 5;
+    doc.text('3. REKAP PENJUALAN MENU', 14, y);
+    y += 6;
 
-    const soldList = financialStats.soldItemsList.slice(0, 5);
+    const soldList = financialStats.soldItemsList.slice(0, 10);
     if (soldList.length > 0) {
       soldList.forEach((it) => {
         const liveStock = stocks[it.id] !== undefined ? stocks[it.id] : 0;
-        drawRow(
-          `• ${it.nama} (Terjual: ${it.qty} porsi)`,
-          `Total: Rp ${it.total.toLocaleString('id-ID')} | Sisa Stok Dapur: ${liveStock} porsi`
-        );
+        drawRow(`• ${it.nama} (${it.qty} porsi)`, `Rp ${it.total.toLocaleString('id-ID')} | Sisa Stok: ${liveStock}`);
       });
     } else {
-      drawRow('• Belum ada menu terjual pada periode ini.', 'Sisa stok dapur tetap terjaga aman');
+      drawRow('• Belum ada menu terjual pada periode ini.', 'Rp 0');
     }
-    y += 8;
-
-    if (y > 240) {
-      doc.addPage();
-      y = 20;
-    }
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(70, 70, 70);
-    doc.text(`Bekasi, ${fullDateStr}`, pageWidth - 65, y);
-    y += 5;
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('Disiapkan Oleh (Kasir)', 25, y);
-    doc.text('Mengetahui & Menyetujui (Admin)', pageWidth - 70, y);
-    y += 18;
-
-    doc.line(20, y, 75, y);
-    doc.line(pageWidth - 75, y, pageWidth - 20, y);
-    y += 4;
-
-    doc.setFont('helvetica', 'normal');
-    doc.text('Petugas Kasir', 32, y);
-    doc.text('Admin Warung', pageWidth - 65, y);
 
     const filenameDate = now.toISOString().slice(0, 10);
-    doc.save(`Laporan-Laba-Bersih-Warung-Rahayu-Jaya-${filenameDate}.pdf`);
+    doc.save(`Laporan-Penghasilan-Kotor-WRJ-${filenameDate}.pdf`);
   };
 
   const handleExportExcel = () => {
     const rows = [
-      ['WARUNG RAHAYU JAYA - LAPORAN LABA BERSIH'],
+      ['WARUNG RAHAYU JAYA - LAPORAN PENGHASILAN KOTOR'],
       [`Tanggal Cetak: ${fullDateStr} ${fullTimeStr}`],
-      [`Periode: ${period}`],
+      [`Periode Filter: ${period}`],
       [],
-      ['Kategori', 'Uraian', 'Nominal (Rp)'],
-      ['Pendapatan', 'Penjualan Kotor (Gross)', financialStats.grossSales],
-      ['Pendapatan', 'Potongan Diskon', financialStats.discount],
-      ['Pendapatan', 'Pendapatan Bersih (Net)', financialStats.netSales],
-      ['Beban Usaha', 'Bahan Baku / HPP (42%)', financialStats.hppBahan],
-      ['Beban Usaha', 'Gaji Karyawan (16%)', financialStats.gajiKaryawan],
-      ['Beban Usaha', 'Listrik & Air PAM (5%)', financialStats.listrikAir],
-      ['Beban Usaha', 'Operasional & Gas (6%)', financialStats.operasionalGas],
-      ['Beban Usaha', 'Total Beban', financialStats.totalBeban],
-      ['Hasil Akhir', `Laba Bersih (${financialStats.profitMargin}%)`, financialStats.netProfit],
+      ['Ringkasan Penghasilan Kotor', 'Jumlah Transaksi', 'Total Kotor (Rp)'],
+      ['Hari Ini', periodBreakdown.daily.count, periodBreakdown.daily.total],
+      ['Mingguan (7 Hari)', periodBreakdown.weekly.count, periodBreakdown.weekly.total],
+      ['Bulanan', periodBreakdown.monthly.count, periodBreakdown.monthly.total],
+      ['Tahunan', periodBreakdown.yearly.count, periodBreakdown.yearly.total],
+      ['Total Periode Terpilih', financialStats.txCount, financialStats.grossSales],
       [],
-      ['Metrik Kasir', 'Total Struk', financialStats.txCount],
-      ['Metrik Kasir', 'AOV (Rata-rata Order)', financialStats.aov],
-      ['Pembayaran', 'QRIS Dinamis', financialStats.payStats.qrisTotal],
-      ['Pembayaran', 'Tunai', financialStats.payStats.cashTotal],
-      ['Pembayaran', 'EDC', financialStats.payStats.edcTotal],
+      ['Metode Pembayaran', 'Jumlah', 'Nominal (Rp)'],
+      ['Tunai Kasir', financialStats.payStats.cashCount, financialStats.payStats.cashTotal],
+      ['QRIS Dinamis', financialStats.payStats.qrisCount, financialStats.payStats.qrisTotal],
+      ['Mesin EDC', financialStats.payStats.edcCount, financialStats.payStats.edcTotal],
     ];
 
     const csvContent =
@@ -421,7 +310,7 @@ export default function ProfitReport({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Laporan-Laba-WRJ-${period}.csv`);
+    link.setAttribute('download', `Laporan-Penghasilan-Kotor-WRJ-${period}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -443,11 +332,10 @@ export default function ProfitReport({
                 border: '1.5px solid #193D2C',
               }}
             />
-            <span className="report-kicker" style={{ margin: 0 }}>● LAPORAN KEUANGAN RESMI TERSINKRON</span>
+            <span className="report-kicker" style={{ margin: 0 }}>● PENGHASILAN KOTOR MURNI (TANPA POTONGAN)</span>
           </div>
           <div className="report-title-row">
-            <h1>Ringkasan Laba Bersih</h1>
-
+            <h1>Laporan Penghasilan Kotor & Histori Pesanan</h1>
           </div>
           <p className="report-timestamp-meta">
             📅 {fullDateStr} • Pukul {fullTimeStr}
@@ -455,9 +343,6 @@ export default function ProfitReport({
         </div>
 
         <div className="report-action-buttons">
-          <div className="period-active-pill">
-            📅 Periode: <strong>{currentMonthYear}</strong>
-          </div>
           <button
             type="button"
             className="btn-export-excel"
@@ -472,11 +357,136 @@ export default function ProfitReport({
             onClick={handlePrintPdf}
             title="Cetak Dokumen PDF Resmi Lengkap"
           >
-            📄 Cetak PDF Resmi
+            📄 Cetak PDF
           </button>
         </div>
       </div>
 
+      {/* 4 Kartu Penghasilan Kotor: Harian, Mingguan, Bulanan, Tahunan */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '24px' }}>
+        <div style={{ background: '#FFFFFF', border: '1.5px solid #BBF7D0', borderRadius: '14px', padding: '18px', boxShadow: '0 2px 6px rgba(22, 163, 74, 0.08)' }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: '#15803D', textTransform: 'uppercase', marginBottom: '6px' }}>
+            📅 Penghasilan Kotor Hari Ini
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: '900', color: '#14532D' }}>
+            Rp {periodBreakdown.daily.total.toLocaleString('id-ID')}
+          </div>
+          <small style={{ color: '#64748B', fontSize: '12px' }}>
+            {periodBreakdown.daily.count} pesanan lunas hari ini
+          </small>
+        </div>
+
+        <div style={{ background: '#FFFFFF', border: '1.5px solid #BFDBFE', borderRadius: '14px', padding: '18px', boxShadow: '0 2px 6px rgba(37, 99, 235, 0.08)' }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: '#1D4ED8', textTransform: 'uppercase', marginBottom: '6px' }}>
+            📆 Penghasilan Kotor Mingguan
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: '900', color: '#1E3A8A' }}>
+            Rp {periodBreakdown.weekly.total.toLocaleString('id-ID')}
+          </div>
+          <small style={{ color: '#64748B', fontSize: '12px' }}>
+            {periodBreakdown.weekly.count} pesanan (7 hari terakhir)
+          </small>
+        </div>
+
+        <div style={{ background: '#FFFFFF', border: '1.5px solid #DDD6FE', borderRadius: '14px', padding: '18px', boxShadow: '0 2px 6px rgba(109, 40, 217, 0.08)' }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: '#6D28D9', textTransform: 'uppercase', marginBottom: '6px' }}>
+            🗓️ Penghasilan Kotor Bulanan
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: '900', color: '#4C1D95' }}>
+            Rp {periodBreakdown.monthly.total.toLocaleString('id-ID')}
+          </div>
+          <small style={{ color: '#64748B', fontSize: '12px' }}>
+            {periodBreakdown.monthly.count} pesanan ({currentMonthYear})
+          </small>
+        </div>
+
+        <div style={{ background: '#FFFFFF', border: '1.5px solid #FDE68A', borderRadius: '14px', padding: '18px', boxShadow: '0 2px 6px rgba(217, 119, 6, 0.08)' }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: '#B45309', textTransform: 'uppercase', marginBottom: '6px' }}>
+            📊 Penghasilan Kotor Tahunan
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: '900', color: '#78350F' }}>
+            Rp {periodBreakdown.yearly.total.toLocaleString('id-ID')}
+          </div>
+          <small style={{ color: '#64748B', fontSize: '12px' }}>
+            {periodBreakdown.yearly.count} pesanan (Tahun {now.getFullYear()})
+          </small>
+        </div>
+      </div>
+
+      {/* Histori Pesanan Hari Ini (Sebelum dihitung ke total penghasilan) */}
+      <div className="report-card-section" style={{ marginBottom: '24px' }}>
+        <div className="section-head-between" style={{ marginBottom: '14px' }}>
+          <div>
+            <h3>🧾 Histori Pesanan Hari Ini</h3>
+            <small>Rincian pesanan lunas hari ini sebelum dijumlahkan ke total penghasilan kotor</small>
+          </div>
+          <span style={{ background: '#DCFCE7', color: '#166534', padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: '800' }}>
+            {periodBreakdown.todayOrders.length} Pesanan • Total Rp {periodBreakdown.daily.total.toLocaleString('id-ID')}
+          </span>
+        </div>
+
+        {periodBreakdown.todayOrders.length === 0 ? (
+          <div style={{ padding: '32px', textAlign: 'center', background: '#F8FAFC', borderRadius: '10px', color: '#64748B' }}>
+            <div style={{ fontSize: '28px', marginBottom: '6px' }}>📭</div>
+            <strong>Belum Ada Histori Pesanan Hari Ini (Rp 0)</strong>
+            <p style={{ margin: '4px 0 0 0', fontSize: '13px' }}>
+              Semua data dimulai dari 0. Pesanan yang sudah lunas hari ini akan tercatat otomatis di tabel ini.
+            </p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="laptop-stock-table" style={{ width: '100%' }}>
+              <thead>
+                <tr>
+                  <th>No. Order</th>
+                  <th>Waktu</th>
+                  <th>Pelanggan & Layanan</th>
+                  <th>Rincian Menu</th>
+                  <th>Metode</th>
+                  <th style={{ textAlign: 'right' }}>Total Kotor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {periodBreakdown.todayOrders.map((ord) => (
+                  <tr key={ord.orderNumber}>
+                    <td>
+                      <strong style={{ color: '#193D2C' }}>#{ord.orderNumber}</strong>
+                    </td>
+                    <td style={{ fontSize: '12px', color: '#64748B' }}>
+                      {(ord as any).time ||
+                        (ord.timestamp
+                          ? new Date(ord.timestamp).toLocaleTimeString('id-ID', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            }) + ' WIB'
+                          : 'Hari ini')}
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: '700', fontSize: '13px' }}>{ord.nama || 'Pelanggan'}</div>
+                      <small style={{ color: '#64748B' }}>
+                        {ord.orderType === 'dine-in' ? `${ord.tableNumber || 'Meja'}` : 'Take Away'}
+                      </small>
+                    </td>
+                    <td style={{ fontSize: '12px', color: '#334155' }}>
+                      {(ord.cartItems || []).map((it) => `${it.nama} (${it.qty}x)`).join(', ')}
+                    </td>
+                    <td>
+                      <span style={{ background: '#F1F5F9', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                        {(ord.paymentMethod || 'cash').toUpperCase()}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: '800', color: '#15803D' }}>
+                      Rp {(ord.total || 0).toLocaleString('id-ID')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Filter Periode untuk Total Detail */}
       <div className="period-filter-nav">
         <button
           type="button"
@@ -490,200 +500,110 @@ export default function ProfitReport({
           className={`period-btn ${period === 'minggu' ? 'active' : ''}`}
           onClick={() => setPeriod('minggu')}
         >
-          Minggu Ini
+          Mingguan
         </button>
         <button
           type="button"
           className={`period-btn ${period === 'bulan' ? 'active' : ''}`}
           onClick={() => setPeriod('bulan')}
         >
-          Bulan Ini ({currentMonthYear.split(' ')[0]})
+          Bulanan
         </button>
         <button
           type="button"
-          className={`period-btn ${period === 'kustom' ? 'active' : ''}`}
-          onClick={() => setPeriod('kustom')}
+          className={`period-btn ${period === 'tahun' ? 'active' : ''}`}
+          onClick={() => setPeriod('tahun')}
         >
-          Semua Data ({transactions.length} Transaksi)
+          Tahunan ({now.getFullYear()})
+        </button>
+        <button
+          type="button"
+          className={`period-btn ${period === 'semua' ? 'active' : ''}`}
+          onClick={() => setPeriod('semua')}
+        >
+          Semua Data ({periodBreakdown.all.count} Transaksi)
         </button>
       </div>
 
+      {/* Kartu Total Penghasilan Kotor Utama */}
       <div className="hero-profit-card">
         <div className="profit-card-top">
           <div className="profit-badge-margin">
-            HASIL AKHIR BERSIH • Margin {financialStats.profitMargin}%
+            TOTAL PENGHASILAN KOTOR MURNI • TANPA POTONGAN
           </div>
-          <span className="profit-medal-icon">🎖️</span>
+          <span className="profit-medal-icon">💰</span>
         </div>
 
-        <span className="profit-label">Laba Bersih (Net Profit)</span>
+        <span className="profit-label">
+          Total Penghasilan Kotor ({period === 'hari' ? 'Hari Ini' : period === 'minggu' ? 'Mingguan' : period === 'bulan' ? 'Bulanan' : period === 'tahun' ? 'Tahunan' : 'Semua Periode'})
+        </span>
         <div className="profit-main-amount">
-          Rp {financialStats.netProfit.toLocaleString('id-ID')}
+          Rp {financialStats.grossSales.toLocaleString('id-ID')}
         </div>
 
         <div className="profit-formula-box">
           <div className="formula-left">
             <span>📋</span>
-            <span>Rumus: Pendapatan Bersih - Total Beban Operasional</span>
+            <span>Total pemasukan kotor seluruh penjualan tanpa potongan karyawan maupun bahan baku</span>
           </div>
           <span className="formula-growth">
-            {financialStats.txCount > 0 ? `+${financialStats.txCount} Transaksi Sukses` : 'Menunggu Transaksi'}
+            {financialStats.txCount > 0 ? `${financialStats.txCount} Transaksi Lunas` : 'Mulai dari 0'}
           </span>
         </div>
       </div>
 
+      {/* Ringkasan Metode Pembayaran & Rekap Menu Terjual */}
       <div className="report-grid-layout">
         <div className="report-col">
           <div className="report-card-section">
             <div className="section-head-between">
-              <h3>Rincian Perhitungan Laba</h3>
-              <small className="accounting-std">Standar Akuntansi F&B</small>
+              <h3>Metode Pembayaran Masuk</h3>
+              <small className="accounting-std">Total {financialStats.txCount} Struk</small>
             </div>
 
             <div className="accounting-ledger">
               <div className="ledger-row">
-                <div className="ledger-icon-box">📠</div>
+                <div className="ledger-icon-box">💵</div>
                 <div className="ledger-info">
-                  <strong>Penjualan Kotor (Gross)</strong>
-                  <small>{financialStats.txCount} transaksi tercatat dari kasir</small>
+                  <strong>Tunai Kasir ({financialStats.payStats.cashPct}%)</strong>
+                  <small>{financialStats.payStats.cashCount} transaksi</small>
                 </div>
                 <div className="ledger-amount positive">
-                  Rp {financialStats.grossSales.toLocaleString('id-ID')}
+                  Rp {financialStats.payStats.cashTotal.toLocaleString('id-ID')}
                 </div>
               </div>
 
               <div className="ledger-row">
-                <div className="ledger-icon-box red">🏷️</div>
+                <div className="ledger-icon-box">📱</div>
                 <div className="ledger-info">
-                  <div className="ledger-title-badge">
-                    <strong>Potongan Diskon & Promo</strong>
-                    <span className="badge-minus">Minus</span>
-                  </div>
-                  <small>Promo Kasir & Voucher Pelanggan</small>
+                  <strong>QRIS Dinamis ({financialStats.payStats.qrisPct}%)</strong>
+                  <small>{financialStats.payStats.qrisCount} transaksi</small>
                 </div>
-                <div className="ledger-amount negative">
-                  - Rp {financialStats.discount.toLocaleString('id-ID')}
-                </div>
-              </div>
-
-              <div className="ledger-divider-label">
-                <span>= HASIL PENJUALAN BERSIH =</span>
-              </div>
-
-              <div className="ledger-row highlight-row">
-                <div className="highlight-bar"></div>
-                <div className="ledger-info">
-                  <strong>Pendapatan Bersih (Net Sales)</strong>
-                  <small>Penjualan Kotor dikurangi Diskon</small>
-                </div>
-                <div className="ledger-amount bold">
-                  Rp {financialStats.netSales.toLocaleString('id-ID')}
+                <div className="ledger-amount positive">
+                  Rp {financialStats.payStats.qrisTotal.toLocaleString('id-ID')}
                 </div>
               </div>
 
               <div className="ledger-row">
-                <div className="ledger-icon-box orange">📦</div>
+                <div className="ledger-icon-box">💳</div>
                 <div className="ledger-info">
-                  <div className="ledger-title-badge">
-                    <strong>Total Biaya & Beban Usaha</strong>
-                    <span className="badge-beban">Beban</span>
-                  </div>
-                  <small>Bahan baku, gaji, utilitas operasional</small>
+                  <strong>Mesin EDC ({financialStats.payStats.edcPct}%)</strong>
+                  <small>{financialStats.payStats.edcCount} transaksi</small>
                 </div>
-                <div className="ledger-amount negative">
-                  - Rp {financialStats.totalBeban.toLocaleString('id-ID')}
+                <div className="ledger-amount positive">
+                  Rp {financialStats.payStats.edcTotal.toLocaleString('id-ID')}
                 </div>
               </div>
 
               <div className="ledger-row final-row">
                 <div className="ledger-icon-box green">💰</div>
                 <div className="ledger-info">
-                  <strong>Laba Bersih Ditahan</strong>
-                  <small>Siap Alokasi Kas Warung</small>
+                  <strong>Total Semua Pemasukan Kotor</strong>
+                  <small>Rata-rata Rp {financialStats.aov.toLocaleString('id-ID')} / order</small>
                 </div>
                 <div className="ledger-amount final-bold">
-                  Rp {financialStats.netProfit.toLocaleString('id-ID')}
+                  Rp {financialStats.grossSales.toLocaleString('id-ID')}
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="kitchen-efficiency-banner">
-            <div className="kitchen-overlay-content">
-              <span className="kitchen-tag">EFISIENSI DAPUR & GUDANG</span>
-              <h4>Food Cost Terkendali di 42.0%</h4>
-              <span className="badge-optimal-pill">Optimal F&B</span>
-            </div>
-          </div>
-
-          <div className="report-card-section">
-            <div className="section-head-between">
-              <div>
-                <h3>Analisis Pengeluaran (Beban Usaha)</h3>
-                <small>Total Biaya Operasional Rp {financialStats.totalBeban.toLocaleString('id-ID')}</small>
-              </div>
-              <span className="link-detail">Tersinkron POS</span>
-            </div>
-
-            <div className="expense-ratio-bar">
-              <div className="exp-segment hpp" style={{ width: '61%' }} title="HPP 61%"></div>
-              <div className="exp-segment gaji" style={{ width: '23%' }} title="Gaji 23%"></div>
-              <div className="exp-segment listrik" style={{ width: '7%' }} title="Listrik 7%"></div>
-              <div className="exp-segment ops" style={{ width: '9%' }} title="Ops & Gas 9%"></div>
-            </div>
-            <div className="expense-axis">
-              <span>0%</span>
-              <span>50%</span>
-              <span>100% (Rp {financialStats.totalBeban.toLocaleString('id-ID')})</span>
-            </div>
-
-            <div className="expense-items-list">
-              <div className="expense-item-row">
-                <div className="exp-icon-box">🥩</div>
-                <div className="exp-details">
-                  <div className="exp-name-badge">
-                    <strong>Bahan Baku (HPP Dapur)</strong>
-                    <span className="exp-percent">61%</span>
-                  </div>
-                  <small>Daging ayam, nila, beras, bumbu basah, sayuran</small>
-                </div>
-                <div className="exp-val">Rp {financialStats.hppBahan.toLocaleString('id-ID')}</div>
-              </div>
-
-              <div className="expense-item-row">
-                <div className="exp-icon-box">👥</div>
-                <div className="exp-details">
-                  <div className="exp-name-badge">
-                    <strong>Gaji Karyawan</strong>
-                    <span className="exp-percent">23%</span>
-                  </div>
-                  <small>Staf dapur, kasir & pramusaji shift</small>
-                </div>
-                <div className="exp-val">Rp {financialStats.gajiKaryawan.toLocaleString('id-ID')}</div>
-              </div>
-
-              <div className="expense-item-row">
-                <div className="exp-icon-box">⚡</div>
-                <div className="exp-details">
-                  <div className="exp-name-badge">
-                    <strong>Listrik & Air PAM</strong>
-                    <span className="exp-percent">7%</span>
-                  </div>
-                  <small>Kulkas chiller pendingin daging, penerangan</small>
-                </div>
-                <div className="exp-val">Rp {financialStats.listrikAir.toLocaleString('id-ID')}</div>
-              </div>
-
-              <div className="expense-item-row">
-                <div className="exp-icon-box">🔥</div>
-                <div className="exp-details">
-                  <div className="exp-name-badge">
-                    <strong>Operasional & Gas LPG</strong>
-                    <span className="exp-percent">9%</span>
-                  </div>
-                  <small>Gas 12kg kompor mawar, kemasan & sabun</small>
-                </div>
-                <div className="exp-val">Rp {financialStats.operasionalGas.toLocaleString('id-ID')}</div>
               </div>
             </div>
           </div>
@@ -692,118 +612,33 @@ export default function ProfitReport({
         <div className="report-col">
           <div className="report-card-section">
             <div className="section-head-between">
-              <h3>Metrik Kasir & Pembayaran</h3>
-              <small className="sync-tag">Real-Time Sync</small>
+              <h3>Rekap Penjualan Menu</h3>
+              <small>{financialStats.soldItemsList.length} Jenis Menu Terjual</small>
             </div>
 
-            <div className="cashier-mini-grid">
-              <div className="mini-stat-card">
-                <div className="stat-top">
-                  <span>Rata-rata Transaksi</span>
-                  <span>🧾</span>
-                </div>
-                <div className="stat-value">Rp {financialStats.aov.toLocaleString('id-ID')}</div>
-                <small className="stat-green">Per struk belanja meja</small>
+            {financialStats.soldItemsList.length === 0 ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
+                Belum ada menu terjual pada periode ini.
               </div>
-
-              <div className="mini-stat-card">
-                <div className="stat-top">
-                  <span>Struk Terbit</span>
-                  <span>🖨️</span>
-                </div>
-                <div className="stat-value">{financialStats.txCount} Struk</div>
-                <small className="stat-muted">Total transaksi berhasil</small>
-              </div>
-            </div>
-
-            <div className="channel-distribution-box">
-              <div className="channel-head">
-                <strong>Distribusi Metode Pembayaran</strong>
-                <small>3 Kanal Pembayaran</small>
-              </div>
-              <div className="channel-bar">
-                <div
-                  className="ch-seg qris"
-                  style={{ width: `${financialStats.payStats.qrisPct || (financialStats.txCount === 0 ? 33 : 0)}%` }}
-                ></div>
-                <div
-                  className="ch-seg cash"
-                  style={{ width: `${financialStats.payStats.cashPct || (financialStats.txCount === 0 ? 34 : 0)}%` }}
-                ></div>
-                <div
-                  className="ch-seg edc"
-                  style={{ width: `${financialStats.payStats.edcPct || (financialStats.txCount === 0 ? 33 : 0)}%` }}
-                ></div>
-              </div>
-              <div className="channel-legends">
-                <div className="legend-col">
-                  <span><i className="dot qris"></i> QRIS</span>
-                  <strong>{financialStats.payStats.qrisPct}%</strong>
-                  <small>Rp {financialStats.payStats.qrisTotal.toLocaleString('id-ID')}</small>
-                </div>
-                <div className="legend-col">
-                  <span><i className="dot cash"></i> Tunai</span>
-                  <strong>{financialStats.payStats.cashPct}%</strong>
-                  <small>Rp {financialStats.payStats.cashTotal.toLocaleString('id-ID')}</small>
-                </div>
-                <div className="legend-col">
-                  <span><i className="dot edc"></i> EDC Mesin</span>
-                  <strong>{financialStats.payStats.edcPct}%</strong>
-                  <small>Rp {financialStats.payStats.edcTotal.toLocaleString('id-ID')}</small>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="report-card-section">
-            <div className="section-head-between">
-              <h3>Rekap Kas Harian (Closing Shift)</h3>
-              <small>Tersinkron Otomatis</small>
-            </div>
-
-            <div className="closing-shift-list">
-              {dailyClosings.map((shift, idx) => (
-                <div key={idx} className="closing-row">
-                  <div className="date-block">
-                    <strong>{shift.dayName}</strong>
-                    <span>{shift.dateNum}</span>
-                  </div>
-                  <div className="shift-info">
-                    <div className="shift-title-row">
-                      <strong>{shift.shiftTitle}</strong>
-                      <span className="badge-klop">● Klop</span>
+            ) : (
+              <div className="accounting-ledger">
+                {financialStats.soldItemsList.map((it) => (
+                  <div key={it.id} className="ledger-row">
+                    <div className="ledger-icon-box">🍽️</div>
+                    <div className="ledger-info">
+                      <strong>{it.nama}</strong>
+                      <small>Terjual: {it.qty} porsi</small>
                     </div>
-                    <small>Kasir: {shift.kasirName} • Selisih Rp 0</small>
+                    <div className="ledger-amount positive">
+                      Rp {it.total.toLocaleString('id-ID')}
+                    </div>
                   </div>
-                  <div className="shift-amount">
-                    <strong>Rp {shift.amount.toLocaleString('id-ID')}</strong>
-                    <small>{shift.strukCount} Struk</small>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              className="btn-toggle-all-closing"
-              onClick={() => setShowAllClosing(!showAllClosing)}
-            >
-              {showAllClosing ? 'Sembunyikan Riwayat Kas ▲' : 'Lihat Rekap Kas Lengkap ▼'}
-            </button>
-          </div>
-
-          <div className="cash-health-card">
-            <div className="cash-health-icon">👍</div>
-            <div className="cash-health-content">
-              <h4>Kondisi Kas Warung Sangat Sehat!</h4>
-              <p>
-                Seluruh transaksi QRIS Midtrans, Tunai Kasir, dan EDC tersinkronisasi 100% dengan stok dapur tanpa selisih fisik.
-              </p>
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 }
-

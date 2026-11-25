@@ -38,6 +38,7 @@ async function main() {
     { id: 'ayam', title: '🍗 Menu Ayam' },
     { id: 'ikan', title: '🐟 Menu Ikan' },
     { id: 'tambahan', title: '🍽️ Menu Tambahan' },
+    { id: 'minuman', title: '🥤 Menu Minuman' },
   ];
 
   for (const cat of categories) {
@@ -55,7 +56,7 @@ async function main() {
       harga: 15000,
       deskripsi: 'Ayam goreng gurih dengan bumbu khas Warung Rahayu Jaya.',
       gambar: '/images/ayam-goreng.jpg',
-      stock: 6,
+      stock: 0,
       categoryId: 'ayam',
     },
     {
@@ -64,7 +65,7 @@ async function main() {
       harga: 15000,
       deskripsi: 'Ayam bakar berbumbu meresap dengan cita rasa khas Warung Rahayu Jaya.',
       gambar: '/images/ayam-bakar.jpg',
-      stock: 10,
+      stock: 0,
       categoryId: 'ayam',
     },
     {
@@ -73,7 +74,7 @@ async function main() {
       harga: 30000,
       deskripsi: 'Ayam Bumbu Bali pedas gurih dengan bumbu khas Warung Rahayu Jaya.',
       gambar: '/images/ayam-bumbu-bali.jpg',
-      stock: 8,
+      stock: 0,
       categoryId: 'ayam',
     },
     {
@@ -82,7 +83,7 @@ async function main() {
       harga: 60000,
       deskripsi: 'Ayam Bekakak 1 ekor empuk dengan bumbu rempah yang meresap sempurna.',
       gambar: '/images/ayam-bekakak.jpg',
-      stock: 5,
+      stock: 0,
       categoryId: 'ayam',
     },
     {
@@ -91,7 +92,7 @@ async function main() {
       harga: 18000,
       deskripsi: 'Ikan nila goreng renyah dengan bumbu khas Warung Rahayu Jaya.',
       gambar: '/images/nila-goreng.jpg',
-      stock: 12,
+      stock: 0,
       categoryId: 'ikan',
     },
     {
@@ -100,7 +101,7 @@ async function main() {
       harga: 18000,
       deskripsi: 'Ikan nila bakar dengan bumbu manis gurih dan aroma bakaran.',
       gambar: '/images/nila-bakar.jpg',
-      stock: 10,
+      stock: 0,
       categoryId: 'ikan',
     },
     {
@@ -109,7 +110,7 @@ async function main() {
       harga: 18000,
       deskripsi: 'Ikan pesmol dengan kuah kuning khas yang kaya rempah.',
       gambar: '/images/ikan-pesmol.jpg',
-      stock: 7,
+      stock: 0,
       categoryId: 'ikan',
     },
     {
@@ -118,7 +119,7 @@ async function main() {
       harga: 10000,
       deskripsi: 'Lele goreng renyah disajikan dengan sambal khas yang pedas nikmat.',
       gambar: '/images/pecel-lele.jpg',
-      stock: 15,
+      stock: 0,
       categoryId: 'ikan',
     },
     {
@@ -127,7 +128,7 @@ async function main() {
       harga: 10000,
       deskripsi: 'Soto hangat dengan kuah gurih yang cocok dinikmati kapan saja.',
       gambar: '/images/soto.jpg',
-      stock: 20,
+      stock: 0,
       categoryId: 'tambahan',
     },
     {
@@ -136,7 +137,7 @@ async function main() {
       harga: 4000,
       deskripsi: 'Ati ampela berbumbu gurih sebagai pelengkap menu favorit.',
       gambar: '/images/ati-ampela.jpg',
-      stock: 15,
+      stock: 0,
       categoryId: 'tambahan',
     },
     {
@@ -145,7 +146,7 @@ async function main() {
       harga: 1000,
       deskripsi: 'Tahu goreng hangat dengan tekstur lembut di dalam dan renyah di luar.',
       gambar: '/images/tahu.jpg',
-      stock: 30,
+      stock: 0,
       categoryId: 'tambahan',
     },
     {
@@ -154,7 +155,7 @@ async function main() {
       harga: 1000,
       deskripsi: 'Tempe goreng gurih yang pas sebagai lauk tambahan.',
       gambar: '/images/tempe.jpg',
-      stock: 30,
+      stock: 0,
       categoryId: 'tambahan',
     },
     {
@@ -163,8 +164,44 @@ async function main() {
       harga: 5000,
       deskripsi: 'Nasi putih hangat, pulen, dan cocok dipadukan dengan semua menu.',
       gambar: '/images/nasi-putih.jpg',
-      stock: 50,
+      stock: 0,
       categoryId: 'tambahan',
+    },
+    {
+      id: 'es-teh-manis',
+      nama: 'Es Teh Manis',
+      harga: 5000,
+      deskripsi: 'Es teh manis segar dengan racikan daun teh pilihan dan es batu kristal.',
+      gambar: '/images/es-teh-manis.jpg',
+      stock: 0,
+      categoryId: 'minuman',
+    },
+    {
+      id: 'es-jeruk',
+      nama: 'Es Jeruk',
+      harga: 7000,
+      deskripsi: 'Es jeruk peras segar alami kaya vitamin C yang menyegarkan.',
+      gambar: '/images/es-jeruk.jpg',
+      stock: 0,
+      categoryId: 'minuman',
+    },
+    {
+      id: 'air-mineral',
+      nama: 'Air Mineral',
+      harga: 4000,
+      deskripsi: 'Air mineral kemasan botol higienis dingin maupun suhu ruang.',
+      gambar: '/images/air-mineral.jpg',
+      stock: 0,
+      categoryId: 'minuman',
+    },
+    {
+      id: 'es-batu',
+      nama: 'Es Batu',
+      harga: 2000,
+      deskripsi: 'Es batu kristal higienis dalam gelas / cup tambahan.',
+      gambar: '/images/es-batu.jpg',
+      stock: 0,
+      categoryId: 'minuman',
     },
   ];
 

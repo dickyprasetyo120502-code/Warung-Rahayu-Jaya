@@ -2,6 +2,9 @@ import { Router } from 'express';
 import {
   createOrder,
   getOrders,
+  updateOrder,
+  payOrder,
+  cancelOrder,
   createSnapToken,
   handleMidtransNotification,
 } from '../controllers/order.controller';
@@ -33,6 +36,9 @@ router.post('/snap-token', createSnapToken);
 router.post('/notification', handleMidtransNotification);
 router.post('/', validateBody(createOrderSchema), createOrder);
 router.get('/', verifyToken, requireKasirOrAdmin, getOrders);
+router.put('/:orderNumber', updateOrder);
+router.post('/:orderNumber/pay', payOrder);
+router.put('/:orderNumber/pay', payOrder);
+router.delete('/:orderNumber', cancelOrder);
 
 export default router;
-

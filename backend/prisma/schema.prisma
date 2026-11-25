@@ -6,7 +6,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
+}                                                                                                                                                   
 
 model User {
   id        Int      @id @default(autoincrement())
@@ -37,7 +37,7 @@ model MenuItem {
   gambar      String?
   stock       Int         @default(20)
   categoryId  String
-  category    Category    @relation(fields: [categoryId], references: [id])
+  categori   Category    @relation(fields: [categoryId], references: [id])
   orderItems  OrderItem[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -79,5 +79,5 @@ model OrderItem {
   total      Int
 
   @@map("order_items")
+  
 }
-

@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import api from '../lib/api';
 import { getNextOrderNumber, incrementOrderNumber } from '../utils/orderNumber';
-import { deductStock, recordTransaction } from '../utils/stockStorage';
+import { deductStock, recordTransaction, updateOrderStatus } from '../utils/stockStorage';
 import { createOrderSchema, OrderItemInput, OrderData } from '../schemas/order.schema';
+import { useCart } from '../context/CartContext';
 
 interface CartSectionProps {
   cartItems: OrderItemInput[];
@@ -26,6 +27,7 @@ export default function CartSection({
   onResetCart,
   onShowReceipt,
 }: CartSectionProps) {
+  const { editingOrder, cancelEditingOrder } = useCart();
   const [nama, setNama] = useState<string>('');
   const [telepon, setTelepon] = useState<string>('');
   const [tableNumber, setTableNumber] = useState<string>('01');
@@ -43,8 +45,21 @@ export default function CartSection({
   const [isLoadingSnap, setIsLoadingSnap] = useState<boolean>(false);
 
   useEffect(() => {
-    setOrderNumber(getNextOrderNumber());
-  }, []);
+    if (editingOrder) {
+      setOrderNumber(editingOrder.orderNumber);
+      setNama(editingOrder.nama || '');
+      setTelepon(editingOrder.telepon || '');
+      const rawNum = editingOrder.rawTableNumber || (editingOrder.tableNumber ? String(editingOrder.tableNumber).replace(/[^0-9]/g, '') : '01');
+      setTableNumber(rawNum || '01');
+      setGuestCount(editingOrder.guestCount || '2');
+      setCatatan(editingOrder.catatan || '');
+      if (editingOrder.paymentMethod) {
+        setPaymentMethod(editingOrder.paymentMethod);
+      }
+    } else {
+      setOrderNumber(getNextOrderNumber());
+    }
+  }, [editingOrder]);
 
   const subtotal = grandTotal;
   const tax = Math.round(subtotal * 0.1);
@@ -63,6 +78,110 @@ export default function CartSection({
       list.unshift(roundedUp);
     }
     return list.slice(0, 4);
+  };
+
+  const handleSavePendingOrder = async () => {
+    setValidationError('');
+
+    const validationResult = createOrderSchema.safeParse({
+      orderType,
+      tableNumber: orderType === 'dine-in' ? tableNumber : null,
+      guestCount: orderType === 'dine-in' ? guestCount : null,
+      nama: nama.trim(),
+      telepon: telepon.trim() || null,
+      catatan: catatan.trim() || null,
+      cartItems,
+      paymentMethod,
+    });
+
+    if (!validationResult.success) {
+      const issue = validationResult.error.issues[0]?.message || 'Data pesanan belum lengkap';
+      setValidationError(issue);
+      alert('⚠️ ' + issue);
+      return;
+    }
+
+    setIsProcessing(true);
+
+    if (editingOrder) {
+      const targetNum = editingOrder.orderNumber;
+      updateOrderStatus(targetNum, {
+        cartItems,
+        total: totalAkhir,
+        subtotal,
+        tax,
+        status: 'Menunggu Pembayaran',
+        paymentStatus: 'PENDING',
+      });
+
+      try {
+        await api.put(`/orders/${targetNum}`, {
+          orderType,
+          tableNumber: orderType === 'dine-in' ? tableNumber : null,
+          guestCount: orderType === 'dine-in' ? guestCount : null,
+          nama: nama.trim(),
+          telepon: telepon.trim() || null,
+          catatan: catatan.trim() || null,
+          cartItems,
+        });
+      } catch (e: any) {
+        console.warn('Backend update order offline:', e.message);
+      }
+
+      setIsProcessing(false);
+      cancelEditingOrder();
+      onResetCart();
+      setNama('');
+      setTelepon('');
+      setCatatan('');
+      setCashGiven('');
+      setOrderNumber(getNextOrderNumber());
+      alert(`✅ Perubahan pesanan #${targetNum} berhasil disimpan (Status: Menunggu Pembayaran)!`);
+      return;
+    }
+
+    const orderData: OrderData = {
+      orderNumber,
+      orderType,
+      tableNumber: orderType === 'dine-in' ? tableNumber : null,
+      guestCount: orderType === 'dine-in' ? guestCount : null,
+      nama: nama.trim(),
+      telepon: telepon.trim(),
+      catatan: catatan.trim(),
+      cartItems,
+      subtotal,
+      tax,
+      total: totalAkhir,
+      paymentMethod,
+      paymentStatus: 'PENDING',
+      date: new Date().toLocaleString('id-ID', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }),
+      timestamp: new Date().toISOString(),
+    };
+
+    try {
+      await api.post('/orders', orderData);
+    } catch (e: any) {
+      console.warn(e.message);
+    }
+
+    deductStock(cartItems);
+    recordTransaction(orderData);
+    incrementOrderNumber();
+
+    setIsProcessing(false);
+    onResetCart();
+    setNama('');
+    setTelepon('');
+    setCatatan('');
+    setCashGiven('');
+    setSnapToken(null);
+    setRedirectUrl(null);
+    setOrderNumber(getNextOrderNumber());
+
+    alert(`✅ Pesanan #${orderData.orderNumber} berhasil disimpan sebagai PENDING!\nCustomer dapat menambah atau mengubah pesanan sebelum melakukan pembayaran di kasir.`);
   };
 
   const handleExecutePayment = async (selectedMethod: 'cash' | 'edc' | 'qris') => {
@@ -100,8 +219,10 @@ export default function CartSection({
     const actualCash = selectedMethod === 'cash' ? numCash : undefined;
     const actualChange = selectedMethod === 'cash' ? kembalian : undefined;
 
+    const targetOrderNumber = editingOrder ? editingOrder.orderNumber : orderNumber;
+
     const orderData: OrderData = {
-      orderNumber,
+      orderNumber: targetOrderNumber,
       orderType,
       tableNumber: orderType === 'dine-in' ? tableNumber : null,
       guestCount: orderType === 'dine-in' ? guestCount : null,
@@ -123,15 +244,39 @@ export default function CartSection({
       timestamp: new Date().toISOString(),
     };
 
-    try {
-      await api.post('/orders', orderData);
-    } catch (e: any) {
-      console.warn(e.message);
-    }
+    if (editingOrder) {
+      updateOrderStatus(targetOrderNumber, {
+        cartItems,
+        subtotal,
+        tax,
+        total: totalAkhir,
+        paymentStatus: selectedMethod === 'qris' ? 'PENDING' : 'PAID',
+        paymentMethod: selectedMethod,
+        cashGiven: actualCash,
+        change: actualChange,
+        status: selectedMethod === 'qris' ? 'Menunggu Pembayaran QRIS' : 'Lunas (Siap Disiapkan)',
+      });
 
-    deductStock(cartItems);
-    recordTransaction(orderData);
-    incrementOrderNumber();
+      try {
+        await api.post(`/orders/${targetOrderNumber}/pay`, {
+          paymentMethod: selectedMethod,
+          cashGiven: actualCash,
+          change: actualChange,
+        });
+      } catch (e: any) {
+        console.warn(e.message);
+      }
+      cancelEditingOrder();
+    } else {
+      try {
+        await api.post('/orders', orderData);
+      } catch (e: any) {
+        console.warn(e.message);
+      }
+      deductStock(cartItems);
+      recordTransaction(orderData);
+      incrementOrderNumber();
+    }
 
     setIsProcessing(false);
     onResetCart();
@@ -249,6 +394,56 @@ export default function CartSection({
 
   return (
     <section className="cart-pos-container" id="cart">
+      {editingOrder && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+            border: '2px solid #F59E0B',
+            borderRadius: '12px',
+            padding: '16px 20px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+            boxShadow: '0 4px 12px rgba(245, 158, 11, 0.15)',
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '20px' }}>✏️</span>
+              <strong style={{ color: '#92400E', fontSize: '16px' }}>
+                Sedang Mengubah / Menambah Menu untuk Pesanan #{editingOrder.orderNumber}
+              </strong>
+            </div>
+            <div style={{ color: '#78350F', fontSize: '13px', marginTop: '4px' }}>
+              Pelanggan: <strong>{editingOrder.nama || 'Pelanggan'}</strong> • Layanan:{' '}
+              <strong>{editingOrder.orderType === 'dine-in' ? (editingOrder.tableNumber || 'Meja') : 'Take Away'}</strong>.
+              <br />
+              Anda dapat menambah atau mengurangi menu dari katalog menu di atas. Setelah selesai, simpan perubahan atau langsung bayar di bawah.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={cancelEditingOrder}
+            style={{
+              background: '#DC2626',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 16px',
+              fontSize: '13px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)',
+            }}
+          >
+            ✖️ Batal Edit
+          </button>
+        </div>
+      )}
+
       <div className="pos-order-card">
         <div className="pos-order-left">
           <div className="pos-order-icon">
@@ -549,6 +744,67 @@ export default function CartSection({
                 <span style={{ color: '#193D2C' }}>Rp{totalAkhir.toLocaleString('id-ID')}</span>
               </div>
             </div>
+          </div>
+
+          <div
+            style={{
+              margin: '20px 0',
+              padding: '18px 20px',
+              backgroundColor: '#F0FDF4',
+              border: '2px dashed #16A34A',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '20px' }}>📝</span>
+                <div>
+                  <strong style={{ color: '#166534', fontSize: '15px' }}>
+                    {editingOrder ? 'Simpan Perubahan Pesanan (Tetap Pending)' : 'Pesan Dahulu, Bayar Nanti di Kasir'}
+                  </strong>
+                  <div style={{ color: '#15803D', fontSize: '12px', marginTop: '2px' }}>
+                    {editingOrder
+                      ? 'Perbarui rincian pesanan tanpa langsung bayar. Customer dapat menambah menu lagi nanti.'
+                      : 'Pesanan dicatat ke sistem kasir tanpa harus langsung bayar. Customer dapat memesan dulu dan bayar belakangan.'}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleSavePendingOrder}
+                disabled={isProcessing || cartItems.length === 0}
+                style={{
+                  backgroundColor: '#16A34A',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '12px 24px',
+                  fontSize: '14px',
+                  fontWeight: '800',
+                  cursor: isProcessing || cartItems.length === 0 ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 10px rgba(22, 163, 74, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <span>💾</span>
+                {editingOrder
+                  ? `Simpan Perubahan (#${editingOrder.orderNumber})`
+                  : 'Simpan Pesanan (Bayar Nanti)'}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ margin: '16px 0 8px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#E2E8F0' }} />
+            <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Atau Langsung Bayar Sekarang
+            </span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#E2E8F0' }} />
           </div>
 
           {paymentMethod === 'cash' && (

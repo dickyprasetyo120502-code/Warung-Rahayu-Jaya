@@ -14,6 +14,8 @@ export const getProfitReport = async (req: Request, res: Response) => {
       startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     } else if (period === 'bulan') {
       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (period === 'tahun') {
+      startDate = new Date(now.getFullYear(), 0, 1);
     }
 
     const whereClause: any = {
@@ -72,18 +74,6 @@ export const getProfitReport = async (req: Request, res: Response) => {
       });
     });
 
-    const discount = 0;
-    const netSales = grossSales - discount;
-
-    const hppBahan = Math.round(netSales * 0.42);
-    const gajiKaryawan = Math.round(netSales * 0.16);
-    const listrikAir = Math.round(netSales * 0.05);
-    const operasionalGas = Math.round(netSales * 0.06);
-
-    const totalBeban = hppBahan + gajiKaryawan + listrikAir + operasionalGas;
-    const netProfit = netSales - totalBeban;
-    const profitMargin = netSales > 0 ? ((netProfit / netSales) * 100).toFixed(1) : '0';
-
     const txCount = orders.length;
     const aov = txCount > 0 ? Math.round(grossSales / txCount) : 0;
 
@@ -98,15 +88,6 @@ export const getProfitReport = async (req: Request, res: Response) => {
       success: true,
       data: {
         grossSales,
-        discount,
-        netSales,
-        hppBahan,
-        gajiKaryawan,
-        listrikAir,
-        operasionalGas,
-        totalBeban,
-        netProfit,
-        profitMargin,
         txCount,
         aov,
         paymentDistribution: {

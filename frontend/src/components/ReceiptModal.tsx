@@ -5,9 +5,10 @@ import { generateReceiptPdfBlob } from '../utils/generateReceiptPdf';
 interface ReceiptModalProps {
   orderData: OrderData | null;
   onClose: () => void;
+  onViewOrders?: () => void;
 }
 
-export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) {
+export default function ReceiptModal({ orderData, onClose, onViewOrders }: ReceiptModalProps) {
   const [waNotice, setWaNotice] = useState<string>('');
 
   if (!orderData) return null;
@@ -260,6 +261,36 @@ export default function ReceiptModal({ orderData, onClose }: ReceiptModalProps) 
               🖨️ Print Nota
             </button>
           </div>
+
+          {onViewOrders && (
+            <button
+              type="button"
+              className="btn-receipt-view-orders"
+              onClick={() => {
+                onClose();
+                onViewOrders();
+              }}
+              style={{
+                marginTop: '8px',
+                padding: '11px',
+                backgroundColor: '#E8F0EC',
+                color: '#193D2C',
+                border: '1.5px solid #CBE0D5',
+                borderRadius: '8px',
+                fontWeight: '700',
+                fontSize: '13.5px',
+                cursor: 'pointer',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>📋</span> Lihat di Daftar Pesanan Customer
+            </button>
+          )}
 
           <button
             type="button"
