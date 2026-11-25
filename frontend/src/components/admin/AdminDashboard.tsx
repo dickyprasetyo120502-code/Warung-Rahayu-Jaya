@@ -245,8 +245,13 @@ export default function AdminDashboard({ authUser, onLogout }: AdminDashboardPro
     handleUpdateStock(itemId, 0);
   };
 
-  const handleResetTransactions = () => {
+  const handleResetTransactions = async () => {
     if (window.confirm('Apakah Anda yakin ingin mereset seluruh data transaksi dan stok semua menu kembali ke 0?')) {
+      try {
+        await api.delete('/orders/reset-all');
+      } catch (e: any) {
+        console.warn('Backend reset orders offline:', e.message);
+      }
       clearAllTransactions();
       setTransactions([]);
 

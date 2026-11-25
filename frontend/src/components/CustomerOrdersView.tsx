@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../lib/api';
-import { getTransactions, updateOrderStatus, deleteTransaction } from '../utils/stockStorage';
+import { getTransactions, updateOrderStatus, deleteTransaction, clearAllTransactions } from '../utils/stockStorage';
 import { OrderData } from '../schemas/order.schema';
 
 interface CustomerOrdersViewProps {
@@ -112,6 +112,19 @@ export default function CustomerOrdersView({ onShowReceipt, onNewOrder, onEditOr
       }
       const updated = deleteTransaction(orderNumber);
       setOrders(updated);
+    }
+  };
+
+  const handleResetAllOrders = async () => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus SEMUA data pesanan customer sehingga kembali kosong (0)?')) {
+      try {
+        await api.delete('/orders/reset-all');
+      } catch (e: any) {
+        console.warn('Backend reset orders offline:', e.message);
+      }
+      clearAllTransactions();
+      setOrders([]);
+      alert('✅ Seluruh data pesanan customer berhasil dikosongkan (mulai dari 0).');
     }
   };
 
@@ -271,56 +284,6 @@ export default function CustomerOrdersView({ onShowReceipt, onNewOrder, onEditOr
 
   return (
     <div className="pos-orders-view-container">
-      {stats.pendingCount > 0 && (
-        <div
-          onClick={() => setFilterType('pending')}
-          style={{
-            background: 'linear-gradient(90deg, #DC2626 0%, #EA580C 100%)',
-            color: '#FFFFFF',
-            padding: '12px 20px',
-            borderRadius: '12px',
-            marginBottom: '18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '10px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span
-              style={{
-                backgroundColor: '#FFFFFF',
-                color: '#DC2626',
-                borderRadius: '9999px',
-                padding: '3px 10px',
-                fontSize: '12px',
-                fontWeight: '900',
-              }}
-            >
-              🔔 {stats.pendingCount} BELUM BAYAR
-            </span>
-            <span style={{ fontSize: '13.5px', fontWeight: '700' }}>
-              Ada {stats.pendingCount} pesanan customer yang masih pending (belum dilakukan pembayaran)!
-            </span>
-          </div>
-          <span
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-              padding: '4px 12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: '800',
-              border: '1px solid rgba(255, 255, 255, 0.4)',
-            }}
-          >
-            Filter Belum Bayar →
-          </span>
-        </div>
-      )}
-
       <div className="pos-orders-header">
         <div className="pos-orders-title-box">
           <div className="pos-orders-badge-row">
@@ -333,6 +296,30 @@ export default function CustomerOrdersView({ onShowReceipt, onNewOrder, onEditOr
         </div>
 
         <div className="pos-orders-header-actions">
+          {orders.length > 0 && (
+            <button
+              type="button"
+              onClick={handleResetAllOrders}
+              title="Kosongkan semua data pesanan mulai dari 0"
+              style={{
+                background: '#FEF2F2',
+                border: '1.5px solid #FECACA',
+                color: '#DC2626',
+                fontWeight: '700',
+                fontSize: '13px',
+                padding: '10px 14px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <span>🗑️</span>
+              <span>Kosongkan (0)</span>
+            </button>
+          )}
+
           <button
             type="button"
             className="btn-refresh-orders"

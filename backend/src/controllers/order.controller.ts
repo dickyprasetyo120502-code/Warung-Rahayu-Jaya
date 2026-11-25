@@ -11,6 +11,7 @@ async function generateOrderNumber(): Promise<string> {
 export const createOrder = async (req: Request, res: Response) => {
   try {
     const {
+      orderNumber: reqOrderNumber,
       orderType,
       tableNumber,
       guestCount,
@@ -19,6 +20,7 @@ export const createOrder = async (req: Request, res: Response) => {
       catatan,
       cartItems,
       paymentMethod,
+      paymentStatus: reqPaymentStatus,
     } = req.body;
 
     if (!cartItems || cartItems.length === 0) {
@@ -55,7 +57,9 @@ export const createOrder = async (req: Request, res: Response) => {
 
       const tax = Math.round(subtotal * 0.1);
       const total = subtotal + tax;
-      const orderNumber = await generateOrderNumber();
+      const orderNumber = reqOrderNumber || (await generateOrderNumber());
+      const finalPaymentStatus =
+        reqPaymentStatus === 'PENDING' || paymentMethod === 'qris' ? 'PENDING' : 'PAID';
 
       const newOrder = await tx.order.create({
         data: {
@@ -70,7 +74,7 @@ export const createOrder = async (req: Request, res: Response) => {
           tax,
           total,
           paymentMethod,
-          paymentStatus: paymentMethod === 'qris' ? 'PENDING' : 'PAID',
+          paymentStatus: finalPaymentStatus,
           kasirName: 'Kasir',
           items: {
             create: cartItems.map((it: any) => ({
@@ -565,6 +569,24 @@ export const cancelOrder = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Gagal membatalkan pesanan.',
+    });
+  }
+};
+
+export const resetAllOrders = async (_req: Request, res: Response) => {
+  try {
+    await prisma.orderItem.deleteMany({});
+    await prisma.order.deleteMany({});
+
+    return res.json({
+      success: true,
+      message: 'Semua data pesanan berhasil dihapus dan diulang dari 0.',
+    });
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal mengosongkan semua data pesanan.',
     });
   }
 };

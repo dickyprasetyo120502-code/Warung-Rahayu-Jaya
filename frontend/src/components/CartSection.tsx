@@ -161,14 +161,19 @@ export default function CartSection({
       timestamp: new Date().toISOString(),
     };
 
+    let finalOrderNumber = orderData.orderNumber;
     try {
-      await api.post('/orders', orderData);
+      const res = await api.post('/orders', orderData);
+      if (res.data?.order?.orderNumber) {
+        finalOrderNumber = res.data.order.orderNumber;
+      }
     } catch (e: any) {
       console.warn(e.message);
     }
 
+    const savedOrderData = { ...orderData, orderNumber: finalOrderNumber };
     deductStock(cartItems);
-    recordTransaction(orderData);
+    recordTransaction(savedOrderData);
     incrementOrderNumber();
 
     setIsProcessing(false);

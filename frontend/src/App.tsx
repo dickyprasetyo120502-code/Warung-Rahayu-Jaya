@@ -147,57 +147,6 @@ export default function App() {
         pendingCount={pendingCount}
       />
 
-      {pendingCount > 0 && posTab === 'menu' && (
-        <div
-          onClick={() => {
-            setPosTab('orders');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          style={{
-            background: 'linear-gradient(90deg, #DC2626 0%, #EA580C 100%)',
-            color: '#FFFFFF',
-            padding: '10px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            cursor: 'pointer',
-            fontSize: '13.5px',
-            fontWeight: '700',
-            boxShadow: '0 3px 10px rgba(220, 38, 38, 0.25)',
-            flexWrap: 'wrap',
-          }}
-        >
-          <span
-            style={{
-              backgroundColor: '#FFFFFF',
-              color: '#DC2626',
-              borderRadius: '9999px',
-              padding: '2px 10px',
-              fontSize: '12px',
-              fontWeight: '900',
-            }}
-          >
-            🔔 {pendingCount} PESANAN BELUM BAYAR
-          </span>
-          <span>
-            Ada {pendingCount} pesanan customer menunggu pembayaran / konfirmasi kasir!
-          </span>
-          <span
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-              padding: '4px 12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: '800',
-              border: '1px solid rgba(255, 255, 255, 0.4)',
-            }}
-          >
-            Lihat Pesanan Customer →
-          </span>
-        </div>
-      )}
-
       {posTab === 'orders' ? (
         <CustomerOrdersView
           onShowReceipt={(data) => {

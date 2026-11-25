@@ -5,6 +5,7 @@ import {
   updateOrder,
   payOrder,
   cancelOrder,
+  resetAllOrders,
   createSnapToken,
   handleMidtransNotification,
 } from '../controllers/order.controller';
@@ -36,6 +37,7 @@ router.post('/snap-token', createSnapToken);
 router.post('/notification', handleMidtransNotification);
 router.post('/', validateBody(createOrderSchema), createOrder);
 router.get('/', verifyToken, requireKasirOrAdmin, getOrders);
+router.delete('/reset-all', verifyToken, requireKasirOrAdmin, resetAllOrders);
 router.put('/:orderNumber', updateOrder);
 router.post('/:orderNumber/pay', payOrder);
 router.put('/:orderNumber/pay', payOrder);
